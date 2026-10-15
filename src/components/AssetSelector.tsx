@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UnderlyingAsset, DataProvider } from '../types/options';
 import { Radio, RefreshCw, Zap } from 'lucide-react';
+import { IbkrConfigModal } from './IbkrConfigModal';
 
 interface AssetSelectorProps {
   assets: UnderlyingAsset[];
@@ -23,6 +24,8 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
   onToggleLiveStreaming,
   lastTickDirection,
 }) => {
+  const [isIbkrModalOpen, setIsIbkrModalOpen] = useState(false);
+
   const providerLabels: Record<DataProvider, string> = {
     INTERACTIVE_BROKERS: 'Interactive Brokers (TWS API)',
     TRADIER: 'Tradier API',
@@ -76,6 +79,16 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
             </select>
           </div>
 
+          {/* IBKR Connection Modal Trigger */}
+          <button
+            onClick={() => setIsIbkrModalOpen(true)}
+            className="px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 border border-slate-800 bg-slate-950 text-slate-300 hover:text-white hover:border-slate-700 transition-colors"
+            title="Stato e configurazione API Interactive Brokers"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span>Stato IBKR</span>
+          </button>
+
           {/* Live streaming feed toggle */}
           <button
             onClick={onToggleLiveStreaming}
@@ -91,6 +104,8 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
           </button>
         </div>
       </div>
+
+      <IbkrConfigModal isOpen={isIbkrModalOpen} onClose={() => setIsIbkrModalOpen(false)} />
 
       {/* Underneath: Detailed Spot Bar */}
       <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-y-2 gap-x-4 text-xs text-slate-400">

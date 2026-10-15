@@ -131,7 +131,60 @@ Descrivi la logica quantitativa, i punti di forza e la gestione del rischio.`;
   }
 });
 
-// Setup Vite middleware in dev or static files in production
+// IBKR Connection Status & Test API
+let ibkrConnectionState = {
+  connected: false,
+  mode: 'SIMULATION', // 'SIMULATION' | 'PAPER' | 'LIVE'
+  host: '127.0.0.1',
+  port: 7497,
+  clientId: 1,
+  lastChecked: new Date().toISOString(),
+  message: 'Modalità Simulatore attiva. TWS / IB Gateway non connesso localmente.',
+};
+
+app.get('/api/ibkr/status', (_req, res) => {
+  return res.json(ibkrConnectionState);
+});
+
+app.post('/api/ibkr/connect', (req, res) => {
+  const { host, port, clientId, mode } = req.body;
+  
+  if (mode === 'SIMULATION') {
+    ibkrConnectionState = {
+      connected: false,
+      mode: 'SIMULATION',
+      host: host || '127.0.0.1',
+      port: Number(port) || 7497,
+      clientId: Number(clientId) || 1,
+      lastChecked: new Date().toISOString(),
+      message: 'Modalità Simulatore attiva (tick real-time Black-Scholes sintetici).',
+    };
+    return res.json({ success: true, state: ibkrConnectionState });
+  }
+
+  // Attempting TWS / Gateway check
+  ibkrConnectionState = {
+    connected: false,
+    mode: mode || 'PAPER',
+    host: host || '127.0.0.1',
+    port: Number(port) || (mode === 'LIVE' ? 7496 : 7497),
+    clientId: Number(clientId) || 1,
+    lastChecked: new Date().toISOString(),
+    message: `In attesa di TWS / IB Gateway su ${host || '127.0.0.1'}:${port || 7497}. Assicurati che Trader Workstation sia avviata con API Socket abilitate (Enable ActiveX and Socket Clients).`,
+  };
+
+  return res.json({
+    success: true,
+    state: ibkrConnectionState,
+    guidelines: {
+      step1: 'Avvia TWS o IB Gateway sul tuo computer locale',
+      step2: 'In TWS: File > Global Configuration > API > Settings',
+      step3: 'Abilita "Enable ActiveX and Socket Clients"',
+      step4: `Imposta Socket Port su ${ibkrConnectionState.port} e disabilita "Read-Only API" per consentire l'invio ordini`,
+    },
+  });
+});
+
 async function startServer() {
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.resolve(__dirname, 'dist')));
