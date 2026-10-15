@@ -1,0 +1,6 @@
+{
+  "name": "Option Lab",
+  "description": "Piattaforma professionale di Option Strategy Builder, 0DTE Intraday Lab, simulazione Black-Scholes, greche e payoff interattivo in tempo reale.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
