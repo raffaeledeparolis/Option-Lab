@@ -12,6 +12,8 @@ interface AssetSelectorProps {
   isLiveStreaming: boolean;
   onToggleLiveStreaming: () => void;
   lastTickDirection?: 'UP' | 'DOWN' | null;
+  onIbkrStatusChange?: () => void;
+  onOpenIbkrModal?: () => void;
 }
 
 export const AssetSelector: React.FC<AssetSelectorProps> = ({
@@ -23,8 +25,34 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
   isLiveStreaming,
   onToggleLiveStreaming,
   lastTickDirection,
+  onIbkrStatusChange,
+  onOpenIbkrModal,
 }) => {
   const [isIbkrModalOpen, setIsIbkrModalOpen] = useState(false);
+  const [ibkrInfo, setIbkrInfo] = useState<{ connected: boolean; mode: string } | null>(null);
+
+  const checkIbkrStatus = () => {
+    fetch('/api/ibkr/status')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data) {
+          setIbkrInfo({ connected: !!data.connected, mode: data.mode || 'SIMULATION' });
+        }
+      })
+      .catch(() => {});
+  };
+
+  const handleOpenModal = () => {
+    if (onOpenIbkrModal) {
+      onOpenIbkrModal();
+    } else {
+      setIsIbkrModalOpen(true);
+    }
+  };
+
+  React.useEffect(() => {
+    checkIbkrStatus();
+  }, []);
 
   const providerLabels: Record<DataProvider, string> = {
     INTERACTIVE_BROKERS: 'Interactive Brokers (TWS API)',
@@ -81,12 +109,20 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
 
           {/* IBKR Connection Modal Trigger */}
           <button
-            onClick={() => setIsIbkrModalOpen(true)}
-            className="px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 border border-slate-800 bg-slate-950 text-slate-300 hover:text-white hover:border-slate-700 transition-colors"
+            onClick={handleOpenModal}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 border transition-all ${
+              ibkrInfo?.connected
+                ? 'border-emerald-500/50 bg-emerald-950/50 text-emerald-300 hover:bg-emerald-900/60 shadow-sm'
+                : 'border-slate-800 bg-slate-950 text-slate-300 hover:text-white hover:border-slate-700'
+            }`}
             title="Stato e configurazione API Interactive Brokers"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span>Stato IBKR</span>
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                ibkrInfo?.connected ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
+              }`}
+            />
+            <span>{ibkrInfo?.connected ? `TWS: ${ibkrInfo.mode}` : 'Stato IBKR'}</span>
           </button>
 
           {/* Live streaming feed toggle */}
@@ -105,7 +141,18 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
         </div>
       </div>
 
-      <IbkrConfigModal isOpen={isIbkrModalOpen} onClose={() => setIsIbkrModalOpen(false)} />
+      <IbkrConfigModal
+        isOpen={isIbkrModalOpen}
+        onClose={() => {
+          setIsIbkrModalOpen(false);
+          checkIbkrStatus();
+          onIbkrStatusChange?.();
+        }}
+        onStatusChange={() => {
+          checkIbkrStatus();
+          onIbkrStatusChange?.();
+        }}
+      />
 
       {/* Underneath: Detailed Spot Bar */}
       <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-y-2 gap-x-4 text-xs text-slate-400">

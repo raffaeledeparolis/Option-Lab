@@ -19,6 +19,14 @@ interface OptionChainProps {
     hoursRemaining?: number
   ) => void;
   activeLegs: OptionLeg[];
+  chainSourceInfo?: {
+    isLive: boolean;
+    provider: string;
+    message?: string;
+    requiresKey?: boolean;
+  };
+  isChainLoading?: boolean;
+  onOpenIbkrModal?: () => void;
 }
 
 export const OptionChain: React.FC<OptionChainProps> = ({
@@ -29,6 +37,9 @@ export const OptionChain: React.FC<OptionChainProps> = ({
   onSelectExpiration,
   onAddLeg,
   activeLegs,
+  chainSourceInfo,
+  isChainLoading,
+  onOpenIbkrModal,
 }) => {
   const [filterView, setFilterView] = useState<'ALL' | 'NEAR_ATM' | 'DELTA_15_30'>('NEAR_ATM');
   const [showGreeksInChain, setShowGreeksInChain] = useState(true);
@@ -144,6 +155,61 @@ export const OptionChain: React.FC<OptionChainProps> = ({
           <span className="font-mono text-amber-200">
             {selectedExpiration.hoursRemaining}h alla chiusura di mercato
           </span>
+        </div>
+      )}
+
+      {/* Provider Data Source Banner */}
+      {chainSourceInfo && (
+        <div
+          className={`px-4 py-2 border-b text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+            chainSourceInfo.isLive
+              ? 'bg-emerald-950/40 border-emerald-900/50 text-emerald-300'
+              : chainSourceInfo.message?.includes('403')
+              ? 'bg-amber-950/50 border-amber-800/60 text-amber-300'
+              : chainSourceInfo.requiresKey
+              ? 'bg-blue-950/30 border-blue-900/40 text-blue-300'
+              : 'bg-slate-950/60 border-slate-800 text-slate-400'
+          }`}
+        >
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                chainSourceInfo.isLive
+                  ? 'bg-emerald-400 animate-pulse'
+                  : chainSourceInfo.message?.includes('403')
+                  ? 'bg-amber-400'
+                  : 'bg-blue-400'
+              }`}
+            />
+            <span className="font-semibold">
+              {chainSourceInfo.provider === 'INTERACTIVE_BROKERS'
+                ? 'Interactive Brokers (TWS):'
+                : `${chainSourceInfo.provider}:`}
+            </span>
+            <span className="text-slate-300">{chainSourceInfo.message}</span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {isChainLoading && (
+              <span className="text-[11px] font-mono text-amber-300 animate-pulse">
+                Caricamento chain...
+              </span>
+            )}
+
+            {chainSourceInfo.provider === 'INTERACTIVE_BROKERS' && onOpenIbkrModal && (
+              <button
+                type="button"
+                onClick={onOpenIbkrModal}
+                className={`px-2.5 py-0.5 rounded text-[11px] font-semibold border transition-colors ${
+                  chainSourceInfo.isLive
+                    ? 'bg-emerald-900/40 border-emerald-500/40 text-emerald-300 hover:bg-emerald-800/50'
+                    : 'bg-amber-950/60 border-amber-500/50 text-amber-300 hover:bg-amber-900/60'
+                }`}
+              >
+                {chainSourceInfo.isLive ? 'Dettagli Socket TWS' : 'Configura Tunnel ngrok / TWS'}
+              </button>
+            )}
+          </div>
         </div>
       )}
 

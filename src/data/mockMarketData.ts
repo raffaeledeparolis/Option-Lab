@@ -157,6 +157,10 @@ export function getAvailableExpirations(): ExpirationDate[] {
     return copy;
   };
 
+  const toIso = (d: Date) => {
+    return d.toISOString().split('T')[0];
+  };
+
   return [
     {
       date: '0DTE',
@@ -164,54 +168,63 @@ export function getAvailableExpirations(): ExpirationDate[] {
       daysToExpiry: 0.15, // ~3.5 hours of session
       is0DTE: true,
       hoursRemaining: 3.5,
+      isoDate: toIso(today),
     },
     {
       date: '1DTE',
       label: `${formatDate(addDays(today, 1))} (1DTE)`,
       daysToExpiry: 1,
       is0DTE: false,
+      isoDate: toIso(addDays(today, 1)),
     },
     {
       date: '2DTE',
       label: `${formatDate(addDays(today, 2))} (2DTE)`,
       daysToExpiry: 2,
       is0DTE: false,
+      isoDate: toIso(addDays(today, 2)),
     },
     {
       date: '7DTE',
       label: `${formatDate(addDays(today, 7))} (1W)`,
       daysToExpiry: 7,
       is0DTE: false,
+      isoDate: toIso(addDays(today, 7)),
     },
     {
       date: '14DTE',
       label: `${formatDate(addDays(today, 14))} (2W)`,
       daysToExpiry: 14,
       is0DTE: false,
+      isoDate: toIso(addDays(today, 14)),
     },
     {
       date: '30DTE',
       label: `${formatDate(addDays(today, 30))} (30D Mensile)`,
       daysToExpiry: 30,
       is0DTE: false,
+      isoDate: toIso(addDays(today, 30)),
     },
     {
       date: '45DTE',
       label: `${formatDate(addDays(today, 45))} (45D Standard)`,
       daysToExpiry: 45,
       is0DTE: false,
+      isoDate: toIso(addDays(today, 45)),
     },
     {
       date: '60DTE',
       label: `${formatDate(addDays(today, 60))} (60D)`,
       daysToExpiry: 60,
       is0DTE: false,
+      isoDate: toIso(addDays(today, 60)),
     },
     {
       date: '90DTE',
       label: `${formatDate(addDays(today, 90))} (90D Trimestrale)`,
       daysToExpiry: 90,
       is0DTE: false,
+      isoDate: toIso(addDays(today, 90)),
     },
   ];
 }

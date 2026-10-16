@@ -1,0 +1,61 @@
+[
+  {
+    "id": "ord_1792165954031_e20j",
+    "orderId": 1003,
+    "symbol": "AAPL",
+    "strategyName": "Bull Call Spread",
+    "orderType": "LMT",
+    "limitPrice": 2.5,
+    "timeInForce": "DAY",
+    "status": "SUBMITTED",
+    "legsCount": 2,
+    "legsSummary": "BUY 1x CALL $230 exp 2026-10-23 | SELL 1x CALL $240 exp 2026-10-23",
+    "submittedAt": "2026-10-16T15:52:34.031Z",
+    "mode": "PAPER",
+    "twsHost": "2.tcp.eu.ngrok.io",
+    "twsPort": 26749,
+    "message": "Ordine Combo/Multi-Leg #1003 TRASMESSO con successo a TWS (2.tcp.eu.ngrok.io:26749). TWS ha confermato la ricezione sul socket.",
+    "transmissionDetails": {
+      "socketConnected": true,
+      "handshakeSent": true,
+      "bytesSent": 176,
+      "twsAcknowledged": true,
+      "twsStatusNote": "TWS ha risposto al pacchetto d'ordine (#1003). Ricevuti 30 byte di conferma.",
+      "troubleshootingTip": "L'ordine è stato trasmesso a TWS. Nella finestra Ordini di TWS desktop, seleziona \"Tutti gli ordini\" o la scheda \"API\" per visualizzarlo."
+    }
+  },
+  {
+    "id": "ord_1792164747993_qlkp",
+    "orderId": 1002,
+    "symbol": "SPX",
+    "strategyName": "Strategia Opzioni",
+    "orderType": "LMT",
+    "limitPrice": 4.76,
+    "timeInForce": "DAY",
+    "status": "PRESUBMITTED",
+    "legsCount": 4,
+    "legsSummary": "BUY 1x PUT $5850 exp 0DTE Intraday | SELL 1x PUT $5855 exp 0DTE Intraday | SELL 1x CALL $5855 exp 0DTE Intraday | BUY 1x CALL $5860 exp 0DTE Intraday",
+    "submittedAt": "2026-10-16T15:32:27.993Z",
+    "mode": "PAPER",
+    "twsHost": "2.tcp.eu.ngrok.io",
+    "twsPort": 26749,
+    "message": "Ordine Combo/Multi-Leg #1002 inoltrato con successo al socket TWS (2.tcp.eu.ngrok.io:26749) in modalità PAPER. Stato: Ricevuto/Pre-Submitted nel book ordini TWS."
+  },
+  {
+    "id": "ord_1792161840249_u9sl",
+    "orderId": 1001,
+    "symbol": "AAPL",
+    "strategyName": "Bull Call Spread",
+    "orderType": "LMT",
+    "limitPrice": 2.45,
+    "timeInForce": "DAY",
+    "status": "PRESUBMITTED",
+    "legsCount": 2,
+    "legsSummary": "BUY 1x CALL $230 exp 2026-10-23 | SELL 1x CALL $235 exp 2026-10-23",
+    "submittedAt": "2026-10-16T14:44:00.250Z",
+    "mode": "PAPER",
+    "twsHost": "2.tcp.eu.ngrok.io",
+    "twsPort": 26749,
+    "message": "Ordine Combo/Multi-Leg #1001 inoltrato con successo al socket TWS (2.tcp.eu.ngrok.io:26749) in modalità PAPER. Stato: Ricevuto/Pre-Submitted nel book ordini TWS."
+  }
+]

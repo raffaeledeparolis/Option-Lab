@@ -1,12 +1,13 @@
 import React from 'react';
 import { OptionLeg, StrategyMetrics, GreeksMetrics, UnderlyingAsset } from '../types/options';
-import { FileText, Compass, TrendingUp, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { FileText, Compass, TrendingUp, AlertCircle, CheckCircle2, Send } from 'lucide-react';
 
 interface StrategySummaryProps {
   legs: OptionLeg[];
   metrics: StrategyMetrics;
   greeks: GreeksMetrics;
   asset: UnderlyingAsset;
+  onOpenOrderModal?: () => void;
 }
 
 export const StrategySummary: React.FC<StrategySummaryProps> = ({
@@ -14,6 +15,7 @@ export const StrategySummary: React.FC<StrategySummaryProps> = ({
   metrics,
   greeks,
   asset,
+  onOpenOrderModal,
 }) => {
   if (legs.length === 0) return null;
 
@@ -188,6 +190,24 @@ export const StrategySummary: React.FC<StrategySummaryProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Quick Execution Toolbar */}
+      {onOpenOrderModal && (
+        <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+          <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span>Pronto per l'esecuzione del trade multi-gamba su Trader Workstation (IBKR).</span>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenOrderModal}
+            className="w-full sm:w-auto px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/40 hover:shadow-emerald-900/60"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>Invia Ordine {strategyTitle} a IBKR</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

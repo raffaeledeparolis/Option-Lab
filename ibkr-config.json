@@ -1,0 +1,9 @@
+{
+  "connected": true,
+  "mode": "PAPER",
+  "host": "2.tcp.eu.ngrok.io",
+  "port": 26749,
+  "clientId": 1,
+  "lastChecked": "2026-10-16T13:46:52.749Z",
+  "message": "Connesso con successo al socket TWS su 2.tcp.eu.ngrok.io:26749!"
+}

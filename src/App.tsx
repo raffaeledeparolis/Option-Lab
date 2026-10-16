@@ -5,6 +5,7 @@ import {
   ExpirationDate,
   DataProvider,
   StrategyPreset,
+  OptionChainRow,
 } from './types/options';
 import {
   UNDERLYING_ASSETS,
@@ -18,6 +19,7 @@ import {
   dteToYears,
 } from './utils/blackScholes';
 import { STRATEGY_PRESETS } from './utils/strategyPresets';
+import { fetchOptionChain, ChainFetchResult } from './services/marketDataApi';
 import { Navbar } from './components/Navbar';
 import { AssetSelector } from './components/AssetSelector';
 import { KeyMetricsBar } from './components/KeyMetricsBar';
@@ -31,6 +33,8 @@ import { ProbabilisticAnalysis } from './components/ProbabilisticAnalysis';
 import { StrategySummary } from './components/StrategySummary';
 import { StrategyComparator } from './components/StrategyComparator';
 import { AiStrategicAssistant } from './components/AiStrategicAssistant';
+import { IbkrConfigModal } from './components/IbkrConfigModal';
+import { IbkrOrderModal } from './components/IbkrOrderModal';
 
 export default function App() {
   // Navigation
@@ -44,6 +48,15 @@ export default function App() {
   const [dataProvider, setDataProvider] = useState<DataProvider>('INTERACTIVE_BROKERS');
   const [isLiveStreaming, setIsLiveStreaming] = useState(true);
   const [lastTickDirection, setLastTickDirection] = useState<'UP' | 'DOWN' | null>(null);
+
+  // IBKR modals and chain refresh trigger
+  const [isIbkrModalOpen, setIsIbkrModalOpen] = useState(false);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [chainRefreshTrigger, setChainRefreshTrigger] = useState(0);
+
+  const reloadChain = useCallback(() => {
+    setChainRefreshTrigger((prev) => prev + 1);
+  }, []);
 
   // Expiration
   const expirations = useMemo(() => getAvailableExpirations(), []);
@@ -66,10 +79,29 @@ export default function App() {
     setTimeDecayDays(0);
   };
 
-  // Option Chain generation for currently selected asset and expiration
-  const currentChain = useMemo(() => {
-    return generateOptionChain(selectedAsset, selectedExpiration);
-  }, [selectedAsset, selectedExpiration]);
+  // Option Chain state fetched from Cloud REST provider or precision model
+  const [currentChain, setCurrentChain] = useState<OptionChainRow[]>(() =>
+    generateOptionChain(UNDERLYING_ASSETS[0], expirations[0])
+  );
+  const [chainSourceInfo, setChainSourceInfo] = useState<ChainFetchResult | null>(null);
+  const [isChainLoading, setIsChainLoading] = useState(false);
+
+  useEffect(() => {
+    let isCancelled = false;
+    setIsChainLoading(true);
+
+    fetchOptionChain(selectedAsset, selectedExpiration, dataProvider).then((res) => {
+      if (!isCancelled) {
+        setCurrentChain(res.chain);
+        setChainSourceInfo(res);
+        setIsChainLoading(false);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedAsset, selectedExpiration, dataProvider, chainRefreshTrigger]);
 
   // Strategy Legs: Start with an initial 0DTE Iron Condor on SPX
   const [legs, setLegs] = useState<OptionLeg[]>(() => {
@@ -355,6 +387,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         legsCount={legs.length}
         onResetStrategy={handleClearLegs}
+        onOpenOrderModal={() => setIsOrderModalOpen(true)}
       />
 
       {/* Main Container */}
@@ -369,6 +402,8 @@ export default function App() {
           isLiveStreaming={isLiveStreaming}
           onToggleLiveStreaming={() => setIsLiveStreaming(!isLiveStreaming)}
           lastTickDirection={lastTickDirection}
+          onIbkrStatusChange={reloadChain}
+          onOpenIbkrModal={() => setIsIbkrModalOpen(true)}
         />
 
         {/* 3. Always Visible Main Metrics Bar */}
@@ -388,6 +423,7 @@ export default function App() {
               onInvertPosition={handleInvertPosition}
               onClearLegs={handleClearLegs}
               onApplyPreset={handleApplyPreset}
+              onOpenOrderModal={() => setIsOrderModalOpen(true)}
             />
 
             <StrategySummary
@@ -395,6 +431,7 @@ export default function App() {
               metrics={metrics}
               greeks={greeks}
               asset={selectedAsset}
+              onOpenOrderModal={() => setIsOrderModalOpen(true)}
             />
 
             <OptionChain
@@ -405,6 +442,9 @@ export default function App() {
               onSelectExpiration={setSelectedExpiration}
               onAddLeg={handleAddLeg}
               activeLegs={legs}
+              chainSourceInfo={chainSourceInfo || undefined}
+              isChainLoading={isChainLoading}
+              onOpenIbkrModal={() => setIsIbkrModalOpen(true)}
             />
           </div>
         )}
@@ -440,6 +480,7 @@ export default function App() {
               metrics={metrics}
               greeks={greeks}
               asset={selectedAsset}
+              onOpenOrderModal={() => setIsOrderModalOpen(true)}
             />
           </div>
         )}
@@ -536,6 +577,29 @@ export default function App() {
       <footer className="mt-auto border-t border-slate-900 bg-slate-950/80 px-4 py-3 text-center text-xs text-slate-500 font-mono">
         Option Lab Terminal · Black-Scholes Analytic Engine & 0DTE Intraday Pinning Simulator
       </footer>
+
+      {/* Global IBKR Configuration Modal */}
+      <IbkrConfigModal
+        isOpen={isIbkrModalOpen}
+        onClose={() => {
+          setIsIbkrModalOpen(false);
+          reloadChain();
+        }}
+        onStatusChange={reloadChain}
+      />
+
+      {/* Global IBKR Order Placement Modal (TWS Routing) */}
+      <IbkrOrderModal
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+        legs={populatedLegs}
+        asset={selectedAsset}
+        strategyTitle="Strategia Opzioni"
+        onOpenIbkrConfig={() => {
+          setIsOrderModalOpen(false);
+          setIsIbkrModalOpen(true);
+        }}
+      />
     </div>
   );
 }

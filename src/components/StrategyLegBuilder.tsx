@@ -1,7 +1,7 @@
 import React from 'react';
 import { OptionLeg, StrategyPreset, UnderlyingAsset } from '../types/options';
 import { STRATEGY_PRESETS } from '../utils/strategyPresets';
-import { Trash2, Copy, ArrowUpDown, Plus, Minus, Layers, RotateCcw } from 'lucide-react';
+import { Trash2, Copy, ArrowUpDown, Plus, Minus, Layers, RotateCcw, Send } from 'lucide-react';
 
 interface StrategyLegBuilderProps {
   legs: OptionLeg[];
@@ -12,6 +12,7 @@ interface StrategyLegBuilderProps {
   onInvertPosition: () => void;
   onClearLegs: () => void;
   onApplyPreset: (preset: StrategyPreset) => void;
+  onOpenOrderModal?: () => void;
 }
 
 export const StrategyLegBuilder: React.FC<StrategyLegBuilderProps> = ({
@@ -23,6 +24,7 @@ export const StrategyLegBuilder: React.FC<StrategyLegBuilderProps> = ({
   onInvertPosition,
   onClearLegs,
   onApplyPreset,
+  onOpenOrderModal,
 }) => {
   const [selectedCategory, setSelectedCategory] = React.useState<string>('ALL');
 
@@ -100,7 +102,18 @@ export const StrategyLegBuilder: React.FC<StrategyLegBuilderProps> = ({
         </div>
 
         {legs.length > 0 && (
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs flex-wrap">
+            {onOpenOrderModal && (
+              <button
+                type="button"
+                onClick={onOpenOrderModal}
+                title="Invia e trasmetti l'ordine combinato su Trader Workstation (IBKR)"
+                className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 transition-all shadow-sm text-[11px]"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Invia Ordine a TWS</span>
+              </button>
+            )}
             <button
               onClick={onInvertPosition}
               title="Inverti tutte le posizioni da Long a Short e viceversa"

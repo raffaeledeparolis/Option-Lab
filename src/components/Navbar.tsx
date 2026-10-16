@@ -1,11 +1,12 @@
 import React from 'react';
-import { Layers, Activity, Sparkles, SlidersHorizontal, Grid3X3, BarChart2, GitCompare } from 'lucide-react';
+import { Layers, Activity, Sparkles, SlidersHorizontal, Grid3X3, BarChart2, GitCompare, Send } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: 'builder' | 'payoff' | 'scenario' | 'greeks' | 'monte-carlo' | 'comparator' | 'ai-advisor';
   setActiveTab: (tab: 'builder' | 'payoff' | 'scenario' | 'greeks' | 'monte-carlo' | 'comparator' | 'ai-advisor') => void;
   legsCount: number;
   onResetStrategy: () => void;
+  onOpenOrderModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -13,6 +14,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   legsCount,
   onResetStrategy,
+  onOpenOrderModal,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3 transition-colors">
@@ -123,6 +125,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 3: Primary Action */}
         <div className="flex items-center gap-2 shrink-0">
+          {onOpenOrderModal && legsCount > 0 && (
+            <button
+              onClick={onOpenOrderModal}
+              className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 shadow-sm"
+              title="Invia la strategia combinata come ordine a Trader Workstation (IBKR)"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Invia Ordine TWS</span>
+            </button>
+          )}
           <button
             onClick={onResetStrategy}
             className="px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 rounded-lg transition-colors whitespace-nowrap"

@@ -63,6 +63,7 @@ export interface ExpirationDate {
   daysToExpiry: number;
   is0DTE: boolean;
   hoursRemaining?: number;
+  isoDate?: string;
 }
 
 export interface GreeksMetrics {
@@ -121,3 +122,54 @@ export interface ComparisonStrategy {
   metrics: StrategyMetrics;
   greeks: GreeksMetrics;
 }
+
+export type OrderType = 'LMT' | 'MKT' | 'STP' | 'STP_LMT';
+export type TimeInForce = 'DAY' | 'GTC' | 'IOC';
+
+export interface IbkrOrderLeg {
+  action: LegAction;
+  quantity: number;
+  strike: number;
+  type: OptionType;
+  expiration: string;
+  premium: number;
+}
+
+export interface IbkrOrderTicket {
+  orderId?: number;
+  symbol: string;
+  orderType: OrderType;
+  limitPrice: number;
+  timeInForce: TimeInForce;
+  legs: IbkrOrderLeg[];
+  accountId?: string;
+  notes?: string;
+  strategyName?: string;
+}
+
+export interface IbkrOrderRecord {
+  id: string;
+  orderId: number;
+  symbol: string;
+  strategyName: string;
+  orderType: OrderType;
+  limitPrice: number;
+  timeInForce: TimeInForce;
+  status: 'SUBMITTED' | 'PRESUBMITTED' | 'WAITING_TWS_POPUP' | 'FILLED' | 'CANCELLED' | 'SIMULATED' | 'ERROR';
+  legsCount: number;
+  legsSummary: string;
+  submittedAt: string;
+  mode: 'PAPER' | 'LIVE' | 'SIMULATION';
+  twsHost: string;
+  twsPort: number;
+  message: string;
+  transmissionDetails?: {
+    socketConnected: boolean;
+    handshakeSent: boolean;
+    bytesSent: number;
+    twsAcknowledged: boolean;
+    twsStatusNote: string;
+    troubleshootingTip?: string;
+  };
+}
+
