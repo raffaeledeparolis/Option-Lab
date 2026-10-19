@@ -42,7 +42,7 @@ function saveIbkrState(state: any) {
 
 let ibkrState = loadIbkrState();
 
-const ORDERS_FILE = path.resolve(__dirname, 'ibkr-orders.json');
+const ORDERS_FILE = path.resolve(process.cwd(), 'ibkr-orders.json');
 
 function loadIbkrOrders(): any[] {
   try {
