@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, Activity, Sparkles, SlidersHorizontal, Grid3X3, BarChart2, GitCompare, Send } from 'lucide-react';
+import { Layers, Activity, Sparkles, SlidersHorizontal, Grid3X3, BarChart2, GitCompare, Send, Coins } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: 'builder' | 'payoff' | 'scenario' | 'greeks' | 'monte-carlo' | 'comparator' | 'ai-advisor';
@@ -7,6 +7,8 @@ interface NavbarProps {
   legsCount: number;
   onResetStrategy: () => void;
   onOpenOrderModal?: () => void;
+  isCrypto?: boolean;
+  onOpenDeribitModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -15,6 +17,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   legsCount,
   onResetStrategy,
   onOpenOrderModal,
+  isCrypto,
+  onOpenDeribitModal,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3 transition-colors">
@@ -125,15 +129,26 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 3: Primary Action */}
         <div className="flex items-center gap-2 shrink-0">
-          {onOpenOrderModal && legsCount > 0 && (
+          {isCrypto && onOpenDeribitModal ? (
             <button
-              onClick={onOpenOrderModal}
-              className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 shadow-sm"
-              title="Invia la strategia combinata come ordine a Trader Workstation (IBKR)"
+              onClick={onOpenDeribitModal}
+              className="px-3 py-1.5 text-xs font-bold text-amber-200 bg-amber-600/90 hover:bg-amber-500 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 shadow-sm shadow-amber-950/40 ring-1 ring-amber-400/50"
+              title="Apri Terminale Deribit API v2 (Book Live, Testnet/Mainnet & Gestione Ordini Crypto)"
             >
-              <Send className="w-3.5 h-3.5" />
-              <span>Invia Ordine TWS</span>
+              <Coins className="w-3.5 h-3.5 text-amber-300" />
+              <span>Invia a Deribit</span>
             </button>
+          ) : (
+            onOpenOrderModal && legsCount > 0 && (
+              <button
+                onClick={onOpenOrderModal}
+                className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 shadow-sm"
+                title="Invia la strategia combinata come ordine a Trader Workstation (IBKR)"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Invia Ordine TWS</span>
+              </button>
+            )
           )}
           <button
             onClick={onResetStrategy}

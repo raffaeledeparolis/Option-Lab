@@ -18,12 +18,14 @@ export interface OptionLeg {
   theta?: number;
   vega?: number;
   rho?: number;
+  premiumCrypto?: number;
+  instrumentName?: string;
 }
 
 export interface UnderlyingAsset {
   symbol: string;
   name: string;
-  category: 'INDEX' | 'ETF' | 'EQUITY' | 'FX' | 'COMMODITY';
+  category: 'INDEX' | 'ETF' | 'EQUITY' | 'FX' | 'COMMODITY' | 'CRYPTO';
   spotPrice: number;
   change24h: number;
   change24hPercent: number;
@@ -32,8 +34,9 @@ export interface UnderlyingAsset {
   riskFreeRate: number; // e.g. 0.045
   dividendYield: number; // e.g. 0.015
   currency: string;
-  contractMultiplier: number; // default 100
+  contractMultiplier: number; // default 100 (or 1 for crypto)
   tickSize: number;
+  cryptoCurrency?: 'BTC' | 'ETH' | 'SOL';
 }
 
 export interface OptionContract {
@@ -49,6 +52,10 @@ export interface OptionContract {
   rho: number;
   volume: number;
   openInterest: number;
+  cryptoPrice?: number; // Price in BTC/ETH
+  cryptoBid?: number;
+  cryptoAsk?: number;
+  instrumentName?: string;
 }
 
 export interface OptionChainRow {
@@ -108,6 +115,7 @@ export interface StrategyPreset {
 
 export type DataProvider = 
   | 'INTERACTIVE_BROKERS'
+  | 'DERIBIT'
   | 'TRADIER'
   | 'POLYGON'
   | 'CBOE_DATASHOP'
@@ -171,5 +179,46 @@ export interface IbkrOrderRecord {
     twsStatusNote: string;
     troubleshootingTip?: string;
   };
+}
+
+export interface DeribitConfig {
+  connected: boolean;
+  environment: 'TESTNET' | 'MAINNET';
+  clientId?: string;
+  clientSecret?: string;
+  currency: 'BTC' | 'ETH' | 'SOL';
+  lastChecked?: string;
+  message?: string;
+}
+
+export interface DeribitOrderLeg {
+  action: LegAction;
+  quantity: number;
+  strike: number;
+  type: OptionType;
+  expiration: string;
+  premiumCrypto: number;
+  premiumUsd: number;
+  instrumentName: string;
+}
+
+export interface DeribitOrderRecord {
+  id: string;
+  orderId: string | number;
+  symbol: string;
+  currency: 'BTC' | 'ETH' | 'SOL';
+  strategyName: string;
+  orderType: 'limit' | 'market';
+  priceCrypto: number;
+  priceUsd: number;
+  timeInForce: 'good_til_cancelled' | 'immediate_or_cancel' | 'fill_or_kill';
+  postOnly?: boolean;
+  status: 'open' | 'filled' | 'cancelled' | 'rejected' | 'simulated';
+  legsCount: number;
+  legsSummary: string;
+  submittedAt: string;
+  environment: 'TESTNET' | 'MAINNET';
+  message: string;
+  rawResponse?: any;
 }
 

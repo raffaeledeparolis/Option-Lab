@@ -35,6 +35,7 @@ import { StrategyComparator } from './components/StrategyComparator';
 import { AiStrategicAssistant } from './components/AiStrategicAssistant';
 import { IbkrConfigModal } from './components/IbkrConfigModal';
 import { IbkrOrderModal } from './components/IbkrOrderModal';
+import { DeribitModal } from './components/DeribitModal';
 
 export default function App() {
   // Navigation
@@ -49,9 +50,10 @@ export default function App() {
   const [isLiveStreaming, setIsLiveStreaming] = useState(true);
   const [lastTickDirection, setLastTickDirection] = useState<'UP' | 'DOWN' | null>(null);
 
-  // IBKR modals and chain refresh trigger
+  // Modals and chain refresh trigger
   const [isIbkrModalOpen, setIsIbkrModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [isDeribitModalOpen, setIsDeribitModalOpen] = useState(false);
   const [chainRefreshTrigger, setChainRefreshTrigger] = useState(0);
 
   const reloadChain = useCallback(() => {
@@ -69,15 +71,28 @@ export default function App() {
   const [customRate, setCustomRate] = useState<number>(selectedAsset.riskFreeRate);
   const [customDiv, setCustomDiv] = useState<number>(selectedAsset.dividendYield);
 
-  // When asset changes, reset custom rates/dividends
+  // When asset changes, reset custom rates/dividends and set provider if crypto
   const handleSelectAsset = (asset: UnderlyingAsset) => {
     setSelectedAsset(asset);
+    if (asset.category === 'CRYPTO') {
+      setDataProvider('DERIBIT');
+    } else if (dataProvider === 'DERIBIT') {
+      setDataProvider('INTERACTIVE_BROKERS');
+    }
     setCustomRate(asset.riskFreeRate);
     setCustomDiv(asset.dividendYield);
     setSpotOffset(0);
     setIvOffsetPct(0);
     setTimeDecayDays(0);
   };
+
+  const handleOpenOrder = useCallback(() => {
+    if (selectedAsset.category === 'CRYPTO') {
+      setIsDeribitModalOpen(true);
+    } else {
+      setIsOrderModalOpen(true);
+    }
+  }, [selectedAsset]);
 
   // Option Chain state fetched from Cloud REST provider or precision model
   const [currentChain, setCurrentChain] = useState<OptionChainRow[]>(() =>
@@ -387,7 +402,9 @@ export default function App() {
         setActiveTab={setActiveTab}
         legsCount={legs.length}
         onResetStrategy={handleClearLegs}
-        onOpenOrderModal={() => setIsOrderModalOpen(true)}
+        onOpenOrderModal={handleOpenOrder}
+        isCrypto={selectedAsset.category === 'CRYPTO'}
+        onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
       />
 
       {/* Main Container */}
@@ -404,6 +421,7 @@ export default function App() {
           lastTickDirection={lastTickDirection}
           onIbkrStatusChange={reloadChain}
           onOpenIbkrModal={() => setIsIbkrModalOpen(true)}
+          onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
         />
 
         {/* 3. Always Visible Main Metrics Bar */}
@@ -423,7 +441,8 @@ export default function App() {
               onInvertPosition={handleInvertPosition}
               onClearLegs={handleClearLegs}
               onApplyPreset={handleApplyPreset}
-              onOpenOrderModal={() => setIsOrderModalOpen(true)}
+              onOpenOrderModal={handleOpenOrder}
+              onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
             />
 
             <StrategySummary
@@ -431,7 +450,8 @@ export default function App() {
               metrics={metrics}
               greeks={greeks}
               asset={selectedAsset}
-              onOpenOrderModal={() => setIsOrderModalOpen(true)}
+              onOpenOrderModal={handleOpenOrder}
+              onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
             />
 
             <OptionChain
@@ -445,6 +465,7 @@ export default function App() {
               chainSourceInfo={chainSourceInfo || undefined}
               isChainLoading={isChainLoading}
               onOpenIbkrModal={() => setIsIbkrModalOpen(true)}
+              onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
             />
           </div>
         )}
@@ -480,7 +501,8 @@ export default function App() {
               metrics={metrics}
               greeks={greeks}
               asset={selectedAsset}
-              onOpenOrderModal={() => setIsOrderModalOpen(true)}
+              onOpenOrderModal={handleOpenOrder}
+              onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
             />
           </div>
         )}
@@ -599,6 +621,19 @@ export default function App() {
           setIsOrderModalOpen(false);
           setIsIbkrModalOpen(true);
         }}
+      />
+
+      {/* Global Deribit Crypto Modal (Ticket, API Keys, Live Orderbook & Stats) */}
+      <DeribitModal
+        isOpen={isDeribitModalOpen}
+        onClose={() => {
+          setIsDeribitModalOpen(false);
+          reloadChain();
+        }}
+        legs={populatedLegs}
+        asset={selectedAsset}
+        strategyTitle="Strategia Opzioni Crypto Deribit"
+        onConfigChanged={reloadChain}
       />
     </div>
   );

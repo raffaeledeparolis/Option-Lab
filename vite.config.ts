@@ -5,6 +5,17 @@ import fs from 'fs';
 import { defineConfig, Plugin } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
+import {
+  loadDeribitConfig,
+  saveDeribitConfig,
+  loadDeribitOrders,
+  saveDeribitOrders,
+  fetchDeribitIndexPrice,
+  fetchDeribitExpirations,
+  fetchDeribitOptionChain,
+  testDeribitAuth,
+  submitDeribitOrder,
+} from './src/services/deribitService';
 
 dotenv.config();
 
@@ -661,6 +672,121 @@ function apiEndpointsPlugin(): Plugin {
           return;
         }
 
+        // 2d. Deribit API Endpoints
+        if (req.url === '/api/deribit/status' && req.method === 'GET') {
+          const cfg = loadDeribitConfig();
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(cfg));
+          return;
+        }
+
+        if (req.url === '/api/deribit/connect' && req.method === 'POST') {
+          const body = await readBody();
+          const current = loadDeribitConfig();
+          const updated = {
+            ...current,
+            ...body,
+            lastChecked: new Date().toISOString(),
+          };
+          saveDeribitConfig(updated);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, config: updated }));
+          return;
+        }
+
+        if (req.url === '/api/deribit/auth-test' && req.method === 'POST') {
+          const body = await readBody();
+          const env = body.environment || 'TESTNET';
+          const clientId = body.clientId || '';
+          const clientSecret = body.clientSecret || '';
+          const result = await testDeribitAuth(env, clientId, clientSecret);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(result));
+          return;
+        }
+
+        if (req.url?.startsWith('/api/deribit/index-price') && req.method === 'GET') {
+          const urlObj = new URL(req.url, 'http://localhost:3000');
+          const currency = (urlObj.searchParams.get('currency') || 'BTC').toUpperCase() as 'BTC' | 'ETH' | 'SOL';
+          try {
+            const indexPrice = await fetchDeribitIndexPrice(currency);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, currency, indexPrice }));
+          } catch (e: any) {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: e.message }));
+          }
+          return;
+        }
+
+        if (req.url?.startsWith('/api/deribit/expirations') && req.method === 'GET') {
+          const urlObj = new URL(req.url, 'http://localhost:3000');
+          const currency = (urlObj.searchParams.get('currency') || 'BTC').toUpperCase() as 'BTC' | 'ETH' | 'SOL';
+          try {
+            const expirations = await fetchDeribitExpirations(currency);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, currency, expirations }));
+          } catch (e: any) {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: e.message, expirations: [] }));
+          }
+          return;
+        }
+
+        if (req.url?.startsWith('/api/deribit/chain') && req.method === 'GET') {
+          const urlObj = new URL(req.url, 'http://localhost:3000');
+          const currency = (urlObj.searchParams.get('currency') || 'BTC').toUpperCase() as 'BTC' | 'ETH' | 'SOL';
+          const dateParam = urlObj.searchParams.get('date') || '';
+          try {
+            const result = await fetchDeribitOptionChain(currency, dateParam);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(result));
+          } catch (e: any) {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ isLive: false, error: e.message, chain: [] }));
+          }
+          return;
+        }
+
+        if (req.url === '/api/deribit/orders' && req.method === 'GET') {
+          const orders = loadDeribitOrders();
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, orders }));
+          return;
+        }
+
+        if (req.url === '/api/deribit/order' && req.method === 'POST') {
+          const body = await readBody();
+          const cfg = loadDeribitConfig();
+          const env = body.environment || cfg.environment || 'TESTNET';
+          const clientId = body.clientId || cfg.clientId || '';
+          const clientSecret = body.clientSecret || cfg.clientSecret || '';
+
+          const record = await submitDeribitOrder(env, clientId, clientSecret, body);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, order: record }));
+          return;
+        }
+
+        if (req.url === '/api/deribit/order/cancel' && req.method === 'POST') {
+          const body = await readBody();
+          const { id, orderId } = body;
+          const currentOrders = loadDeribitOrders();
+          const target = currentOrders.find((o) => o.id === id || o.orderId === orderId);
+          if (target) {
+            target.status = 'rejected';
+            target.message = `Ordine #${target.orderId} annullato dall'utente.`;
+            saveDeribitOrders(currentOrders);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, order: target }));
+          } else {
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = 404;
+            res.end(JSON.stringify({ success: false, error: 'Ordine Deribit non trovato' }));
+          }
+          return;
+        }
+
         // 3. Gemini Advisor
         if (req.url === '/api/gemini/advisor' && req.method === 'POST') {
           const body = await readBody();
@@ -758,6 +884,11 @@ Fornisci una strategia tra quelle canoniche (Bull Call Spread, Iron Condor, 0DTE
           res.setHeader('Content-Type', 'application/json');
           res.end(
             JSON.stringify({
+              DERIBIT: {
+                configured: true,
+                name: 'Deribit API v2 (Crypto Options BTC/ETH/SOL)',
+                envVar: 'DERIBIT_CLIENT_ID',
+              },
               MARKETDATA_APP: {
                 configured: !!process.env.MARKETDATA_API_TOKEN,
                 name: 'MarketData.app (Live CBOE/OPRA)',
@@ -784,6 +915,32 @@ Fornisci una strategia tra quelle canoniche (Bull Call Spread, Iron Condor, 0DTE
           const symbol = urlObj.searchParams.get('symbol') || 'SPX';
           const expiration = urlObj.searchParams.get('date') || '';
           const provider = urlObj.searchParams.get('provider') || 'MARKETDATA_APP';
+
+          // 0a. Deribit Crypto Options Feed
+          if (provider === 'DERIBIT' || ['BTC', 'ETH', 'SOL'].includes(symbol.toUpperCase())) {
+            const currency = (['BTC', 'ETH', 'SOL'].includes(symbol.toUpperCase()) ? symbol.toUpperCase() : 'BTC') as 'BTC' | 'ETH' | 'SOL';
+            try {
+              const deribitData = await fetchDeribitOptionChain(currency, expiration);
+              res.setHeader('Content-Type', 'application/json');
+              res.end(
+                JSON.stringify({
+                  provider: 'DERIBIT',
+                  ...deribitData,
+                })
+              );
+              return;
+            } catch (err: any) {
+              res.setHeader('Content-Type', 'application/json');
+              res.end(
+                JSON.stringify({
+                  isLive: false,
+                  provider: 'DERIBIT',
+                  error: err.message,
+                })
+              );
+              return;
+            }
+          }
 
           // 0. Interactive Brokers (TWS Socket via ngrok / Bridge)
           if (provider === 'INTERACTIVE_BROKERS') {

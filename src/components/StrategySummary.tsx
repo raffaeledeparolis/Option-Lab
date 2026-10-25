@@ -1,6 +1,6 @@
 import React from 'react';
 import { OptionLeg, StrategyMetrics, GreeksMetrics, UnderlyingAsset } from '../types/options';
-import { FileText, Compass, TrendingUp, AlertCircle, CheckCircle2, Send } from 'lucide-react';
+import { FileText, Compass, TrendingUp, AlertCircle, CheckCircle2, Send, Coins } from 'lucide-react';
 
 interface StrategySummaryProps {
   legs: OptionLeg[];
@@ -8,6 +8,7 @@ interface StrategySummaryProps {
   greeks: GreeksMetrics;
   asset: UnderlyingAsset;
   onOpenOrderModal?: () => void;
+  onOpenDeribitModal?: () => void;
 }
 
 export const StrategySummary: React.FC<StrategySummaryProps> = ({
@@ -16,6 +17,7 @@ export const StrategySummary: React.FC<StrategySummaryProps> = ({
   greeks,
   asset,
   onOpenOrderModal,
+  onOpenDeribitModal,
 }) => {
   if (legs.length === 0) return null;
 
@@ -192,20 +194,35 @@ export const StrategySummary: React.FC<StrategySummaryProps> = ({
       </div>
 
       {/* Quick Execution Toolbar */}
-      {onOpenOrderModal && (
+      {(onOpenDeribitModal || onOpenOrderModal) && (
         <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2.5">
           <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span>Pronto per l'esecuzione del trade multi-gamba su Trader Workstation (IBKR).</span>
+            <span className={`w-2 h-2 rounded-full ${asset.category === 'CRYPTO' ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
+            <span>
+              {asset.category === 'CRYPTO'
+                ? `Pronto per l'esecuzione su Deribit API v2 (${asset.cryptoCurrency || asset.symbol} European Cash-Settled).`
+                : "Pronto per l'esecuzione del trade multi-gamba su Trader Workstation (IBKR)."}
+            </span>
           </div>
-          <button
-            type="button"
-            onClick={onOpenOrderModal}
-            className="w-full sm:w-auto px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/40 hover:shadow-emerald-900/60"
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span>Invia Ordine {strategyTitle} a IBKR</span>
-          </button>
+          {asset.category === 'CRYPTO' ? (
+            <button
+              type="button"
+              onClick={onOpenDeribitModal || onOpenOrderModal}
+              className="w-full sm:w-auto px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-amber-100 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-950/40 hover:shadow-amber-900/60 ring-1 ring-amber-400/40"
+            >
+              <Coins className="w-3.5 h-3.5 text-amber-200" />
+              <span>Invia Ordine {strategyTitle} a Deribit</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenOrderModal}
+              className="w-full sm:w-auto px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/40 hover:shadow-emerald-900/60"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Invia Ordine {strategyTitle} a IBKR</span>
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -5,6 +5,17 @@ import path from 'path';
 import fs from 'fs';
 import net from 'net';
 import { fileURLToPath } from 'url';
+import {
+  loadDeribitConfig,
+  saveDeribitConfig,
+  loadDeribitOrders,
+  saveDeribitOrders,
+  fetchDeribitIndexPrice,
+  fetchDeribitExpirations,
+  fetchDeribitOptionChain,
+  testDeribitAuth,
+  submitDeribitOrder,
+} from './src/services/deribitService';
 
 dotenv.config();
 
@@ -716,9 +727,100 @@ app.post('/api/ibkr/order/cancel', (req, res) => {
   }
 });
 
+// Deribit API Endpoints
+app.get('/api/deribit/status', (_req, res) => {
+  const cfg = loadDeribitConfig();
+  return res.json(cfg);
+});
+
+app.post('/api/deribit/connect', (req, res) => {
+  const current = loadDeribitConfig();
+  const updated = {
+    ...current,
+    ...req.body,
+    lastChecked: new Date().toISOString(),
+  };
+  saveDeribitConfig(updated);
+  return res.json({ success: true, config: updated });
+});
+
+app.post('/api/deribit/auth-test', async (req, res) => {
+  const env = req.body?.environment || 'TESTNET';
+  const clientId = req.body?.clientId || '';
+  const clientSecret = req.body?.clientSecret || '';
+  const result = await testDeribitAuth(env, clientId, clientSecret);
+  return res.json(result);
+});
+
+app.get('/api/deribit/index-price', async (req, res) => {
+  const currency = (String(req.query.currency || 'BTC')).toUpperCase() as 'BTC' | 'ETH' | 'SOL';
+  try {
+    const indexPrice = await fetchDeribitIndexPrice(currency);
+    return res.json({ success: true, currency, indexPrice });
+  } catch (e: any) {
+    return res.json({ success: false, error: e.message });
+  }
+});
+
+app.get('/api/deribit/expirations', async (req, res) => {
+  const currency = (String(req.query.currency || 'BTC')).toUpperCase() as 'BTC' | 'ETH' | 'SOL';
+  try {
+    const expirations = await fetchDeribitExpirations(currency);
+    return res.json({ success: true, currency, expirations });
+  } catch (e: any) {
+    return res.json({ success: false, error: e.message, expirations: [] });
+  }
+});
+
+app.get('/api/deribit/chain', async (req, res) => {
+  const currency = (String(req.query.currency || 'BTC')).toUpperCase() as 'BTC' | 'ETH' | 'SOL';
+  const dateParam = String(req.query.date || '');
+  try {
+    const result = await fetchDeribitOptionChain(currency, dateParam);
+    return res.json(result);
+  } catch (e: any) {
+    return res.json({ isLive: false, error: e.message, chain: [] });
+  }
+});
+
+app.get('/api/deribit/orders', (_req, res) => {
+  const orders = loadDeribitOrders();
+  return res.json({ success: true, orders });
+});
+
+app.post('/api/deribit/order', async (req, res) => {
+  const body = req.body;
+  const cfg = loadDeribitConfig();
+  const env = body.environment || cfg.environment || 'TESTNET';
+  const clientId = body.clientId || cfg.clientId || '';
+  const clientSecret = body.clientSecret || cfg.clientSecret || '';
+
+  const record = await submitDeribitOrder(env, clientId, clientSecret, body);
+  return res.json({ success: true, order: record });
+});
+
+app.post('/api/deribit/order/cancel', (req, res) => {
+  const { id, orderId } = req.body;
+  const currentOrders = loadDeribitOrders();
+  const target = currentOrders.find((o) => o.id === id || o.orderId === orderId);
+  if (target) {
+    target.status = 'rejected';
+    target.message = `Ordine #${target.orderId} annullato dall'utente.`;
+    saveDeribitOrders(currentOrders);
+    return res.json({ success: true, order: target });
+  } else {
+    return res.status(404).json({ success: false, error: 'Ordine Deribit non trovato' });
+  }
+});
+
 // Market Providers Status
 app.get('/api/market/providers-status', (_req, res) => {
   return res.json({
+    DERIBIT: {
+      configured: true,
+      name: 'Deribit API v2 (Crypto Options BTC/ETH/SOL)',
+      envVar: 'DERIBIT_CLIENT_ID',
+    },
     MARKETDATA_APP: {
       configured: !!process.env.MARKETDATA_API_TOKEN,
       name: 'MarketData.app (Live CBOE/OPRA)',
@@ -742,6 +844,24 @@ app.get('/api/market/chain', async (req, res) => {
   const symbol = String(req.query.symbol || 'SPX');
   const expiration = String(req.query.date || '');
   const provider = String(req.query.provider || 'MARKETDATA_APP');
+
+  // Deribit Crypto Options
+  if (provider === 'DERIBIT' || ['BTC', 'ETH', 'SOL'].includes(symbol.toUpperCase())) {
+    const currency = (['BTC', 'ETH', 'SOL'].includes(symbol.toUpperCase()) ? symbol.toUpperCase() : 'BTC') as 'BTC' | 'ETH' | 'SOL';
+    try {
+      const deribitData = await fetchDeribitOptionChain(currency, expiration);
+      return res.json({
+        provider: 'DERIBIT',
+        ...deribitData,
+      });
+    } catch (err: any) {
+      return res.json({
+        isLive: false,
+        provider: 'DERIBIT',
+        error: err.message,
+      });
+    }
+  }
 
   if (provider === 'INTERACTIVE_BROKERS') {
     if (!ibkrConnectionState.connected) {

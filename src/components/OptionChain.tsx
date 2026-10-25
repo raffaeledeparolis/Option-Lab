@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { OptionChainRow, ExpirationDate, OptionLeg, UnderlyingAsset } from '../types/options';
-import { Plus, Minus, Clock, Eye, Layers } from 'lucide-react';
+import { Plus, Minus, Clock, Eye, Layers, Coins } from 'lucide-react';
 
 interface OptionChainProps {
   chain: OptionChainRow[];
@@ -27,6 +27,7 @@ interface OptionChainProps {
   };
   isChainLoading?: boolean;
   onOpenIbkrModal?: () => void;
+  onOpenDeribitModal?: () => void;
 }
 
 export const OptionChain: React.FC<OptionChainProps> = ({
@@ -40,6 +41,7 @@ export const OptionChain: React.FC<OptionChainProps> = ({
   chainSourceInfo,
   isChainLoading,
   onOpenIbkrModal,
+  onOpenDeribitModal,
 }) => {
   const [filterView, setFilterView] = useState<'ALL' | 'NEAR_ATM' | 'DELTA_15_30'>('NEAR_ATM');
   const [showGreeksInChain, setShowGreeksInChain] = useState(true);
@@ -196,6 +198,17 @@ export const OptionChain: React.FC<OptionChainProps> = ({
               </span>
             )}
 
+            {(chainSourceInfo.provider === 'DERIBIT' || asset.category === 'CRYPTO') && onOpenDeribitModal && (
+              <button
+                type="button"
+                onClick={onOpenDeribitModal}
+                className="px-2.5 py-0.5 rounded text-[11px] font-semibold border transition-colors bg-amber-950/60 border-amber-500/50 text-amber-300 hover:bg-amber-900/60 flex items-center gap-1"
+              >
+                <Coins className="w-3 h-3 text-amber-300" />
+                <span>Terminale & API Deribit</span>
+              </button>
+            )}
+
             {chainSourceInfo.provider === 'INTERACTIVE_BROKERS' && onOpenIbkrModal && (
               <button
                 type="button"
@@ -334,10 +347,20 @@ export const OptionChain: React.FC<OptionChainProps> = ({
                     </td>
                   )}
                   <td className={`py-1 px-2 text-right font-mono text-xs font-semibold ${isCallItm ? 'text-emerald-400' : 'text-slate-300'}`}>
-                    {row.call.bid.toFixed(2)}
+                    <div>{row.call.bid.toFixed(2)}</div>
+                    {asset.category === 'CRYPTO' && (
+                      <div className="text-[9px] text-amber-400/80 font-normal">
+                        {(row.call.cryptoBid ?? (row.call.bid / spot)).toFixed(4)} {asset.cryptoCurrency || 'BTC'}
+                      </div>
+                    )}
                   </td>
                   <td className={`py-1 px-2 text-right font-mono text-xs font-semibold ${isCallItm ? 'text-emerald-400' : 'text-slate-300'}`}>
-                    {row.call.ask.toFixed(2)}
+                    <div>{row.call.ask.toFixed(2)}</div>
+                    {asset.category === 'CRYPTO' && (
+                      <div className="text-[9px] text-amber-400/80 font-normal">
+                        {(row.call.cryptoAsk ?? (row.call.ask / spot)).toFixed(4)} {asset.cryptoCurrency || 'BTC'}
+                      </div>
+                    )}
                   </td>
 
                   {/* STRIKE CENTER COLUMN */}
@@ -348,17 +371,33 @@ export const OptionChain: React.FC<OptionChainProps> = ({
                           ? 'bg-amber-400 text-slate-950 font-extrabold shadow-sm'
                           : 'text-white'
                       }`}
+                      title={row.call.instrumentName ? `Deribit Call: ${row.call.instrumentName} | Put: ${row.put.instrumentName}` : undefined}
                     >
                       {row.strike.toFixed(asset.symbol === 'EURUSD' ? 4 : 2)}
                     </span>
+                    {asset.category === 'CRYPTO' && (
+                      <div className="text-[8px] text-slate-500 font-sans tracking-tight">
+                        Deribit Cash-S.
+                      </div>
+                    )}
                   </td>
 
                   {/* PUT PRICES & GREEKS */}
                   <td className={`py-1 px-2 text-left font-mono text-xs font-semibold ${isPutItm ? 'text-rose-400' : 'text-slate-300'}`}>
-                    {row.put.bid.toFixed(2)}
+                    <div>{row.put.bid.toFixed(2)}</div>
+                    {asset.category === 'CRYPTO' && (
+                      <div className="text-[9px] text-amber-400/80 font-normal">
+                        {(row.put.cryptoBid ?? (row.put.bid / spot)).toFixed(4)} {asset.cryptoCurrency || 'BTC'}
+                      </div>
+                    )}
                   </td>
                   <td className={`py-1 px-2 text-left font-mono text-xs font-semibold ${isPutItm ? 'text-rose-400' : 'text-slate-300'}`}>
-                    {row.put.ask.toFixed(2)}
+                    <div>{row.put.ask.toFixed(2)}</div>
+                    {asset.category === 'CRYPTO' && (
+                      <div className="text-[9px] text-amber-400/80 font-normal">
+                        {(row.put.cryptoAsk ?? (row.put.ask / spot)).toFixed(4)} {asset.cryptoCurrency || 'BTC'}
+                      </div>
+                    )}
                   </td>
                   {showGreeksInChain && (
                     <td className="py-1 px-2 text-left font-mono text-[11px] text-rose-400/90">

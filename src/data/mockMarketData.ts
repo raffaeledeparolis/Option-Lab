@@ -137,6 +137,54 @@ export const UNDERLYING_ASSETS: UnderlyingAsset[] = [
     contractMultiplier: 100,
     tickSize: 0.5,
   },
+  {
+    symbol: 'BTC',
+    name: 'Bitcoin (Deribit Options)',
+    category: 'CRYPTO',
+    spotPrice: 80250.00,
+    change24h: 1420.00,
+    change24hPercent: 1.80,
+    iv: 0.485, // 48.5% DVOL
+    ivRank: 56,
+    riskFreeRate: 0.045,
+    dividendYield: 0.0,
+    currency: '$',
+    contractMultiplier: 1, // Deribit standard contract
+    tickSize: 1000.0,
+    cryptoCurrency: 'BTC',
+  },
+  {
+    symbol: 'ETH',
+    name: 'Ethereum (Deribit Options)',
+    category: 'CRYPTO',
+    spotPrice: 2330.00,
+    change24h: 38.50,
+    change24hPercent: 1.68,
+    iv: 0.540,
+    ivRank: 60,
+    riskFreeRate: 0.045,
+    dividendYield: 0.032, // Staking yield
+    currency: '$',
+    contractMultiplier: 1,
+    tickSize: 50.0,
+    cryptoCurrency: 'ETH',
+  },
+  {
+    symbol: 'SOL',
+    name: 'Solana (Deribit Options)',
+    category: 'CRYPTO',
+    spotPrice: 174.50,
+    change24h: 5.20,
+    change24hPercent: 3.07,
+    iv: 0.720,
+    ivRank: 66,
+    riskFreeRate: 0.045,
+    dividendYield: 0.0,
+    currency: '$',
+    contractMultiplier: 1,
+    tickSize: 5.0,
+    cryptoCurrency: 'SOL',
+  },
 ];
 
 /**
@@ -299,6 +347,9 @@ export function generateOptionChain(
     const baseVol = Math.max(12, Math.round(5000 * Math.exp(-distAtm * 15)));
     const baseOi = Math.max(50, Math.round(18000 * Math.exp(-distAtm * 10)));
 
+    const isCrypto = asset.category === 'CRYPTO';
+    const expCode = (expiration.isoDate || '2026-10-25').replace(/-/g, '').slice(2);
+
     return {
       strike,
       call: {
@@ -314,6 +365,10 @@ export function generateOptionChain(
         rho: Number(callBS.rho.toFixed(2)),
         volume: baseVol + Math.floor(Math.random() * 200),
         openInterest: baseOi + Math.floor(Math.random() * 500),
+        cryptoPrice: isCrypto ? Number((callBS.price / spot).toFixed(4)) : undefined,
+        cryptoBid: isCrypto ? Number((callBid / spot).toFixed(4)) : undefined,
+        cryptoAsk: isCrypto ? Number((callAsk / spot).toFixed(4)) : undefined,
+        instrumentName: isCrypto ? `${asset.symbol}-${expCode}-${strike}-C` : undefined,
       },
       put: {
         strike,
@@ -328,6 +383,10 @@ export function generateOptionChain(
         rho: Number(putBS.rho.toFixed(2)),
         volume: Math.round(baseVol * 1.2) + Math.floor(Math.random() * 200),
         openInterest: Math.round(baseOi * 1.3) + Math.floor(Math.random() * 600),
+        cryptoPrice: isCrypto ? Number((putBS.price / spot).toFixed(4)) : undefined,
+        cryptoBid: isCrypto ? Number((putBid / spot).toFixed(4)) : undefined,
+        cryptoAsk: isCrypto ? Number((putAsk / spot).toFixed(4)) : undefined,
+        instrumentName: isCrypto ? `${asset.symbol}-${expCode}-${strike}-P` : undefined,
       },
     };
   });

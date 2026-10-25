@@ -1,7 +1,7 @@
 import React from 'react';
 import { OptionLeg, StrategyPreset, UnderlyingAsset } from '../types/options';
 import { STRATEGY_PRESETS } from '../utils/strategyPresets';
-import { Trash2, Copy, ArrowUpDown, Plus, Minus, Layers, RotateCcw, Send } from 'lucide-react';
+import { Trash2, Copy, ArrowUpDown, Plus, Minus, Layers, RotateCcw, Send, Coins } from 'lucide-react';
 
 interface StrategyLegBuilderProps {
   legs: OptionLeg[];
@@ -13,6 +13,7 @@ interface StrategyLegBuilderProps {
   onClearLegs: () => void;
   onApplyPreset: (preset: StrategyPreset) => void;
   onOpenOrderModal?: () => void;
+  onOpenDeribitModal?: () => void;
 }
 
 export const StrategyLegBuilder: React.FC<StrategyLegBuilderProps> = ({
@@ -25,6 +26,7 @@ export const StrategyLegBuilder: React.FC<StrategyLegBuilderProps> = ({
   onClearLegs,
   onApplyPreset,
   onOpenOrderModal,
+  onOpenDeribitModal,
 }) => {
   const [selectedCategory, setSelectedCategory] = React.useState<string>('ALL');
 
@@ -103,7 +105,17 @@ export const StrategyLegBuilder: React.FC<StrategyLegBuilderProps> = ({
 
         {legs.length > 0 && (
           <div className="flex items-center gap-2 text-xs flex-wrap">
-            {onOpenOrderModal && (
+            {asset.category === 'CRYPTO' && (onOpenDeribitModal || onOpenOrderModal) ? (
+              <button
+                type="button"
+                onClick={onOpenDeribitModal || onOpenOrderModal}
+                title="Invia la strategia di opzioni crypto su Deribit API v2"
+                className="px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-500 text-amber-100 font-bold flex items-center gap-1.5 transition-all shadow-sm ring-1 ring-amber-400/40 text-[11px]"
+              >
+                <Coins className="w-3.5 h-3.5 text-amber-200" />
+                <span>Invia a Deribit</span>
+              </button>
+            ) : onOpenOrderModal ? (
               <button
                 type="button"
                 onClick={onOpenOrderModal}
@@ -113,7 +125,7 @@ export const StrategyLegBuilder: React.FC<StrategyLegBuilderProps> = ({
                 <Send className="w-3.5 h-3.5" />
                 <span>Invia Ordine a TWS</span>
               </button>
-            )}
+            ) : null}
             <button
               onClick={onInvertPosition}
               title="Inverti tutte le posizioni da Long a Short e viceversa"
