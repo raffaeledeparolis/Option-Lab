@@ -36,6 +36,7 @@ import { AiStrategicAssistant } from './components/AiStrategicAssistant';
 import { IbkrConfigModal } from './components/IbkrConfigModal';
 import { IbkrOrderModal } from './components/IbkrOrderModal';
 import { DeribitModal } from './components/DeribitModal';
+import { BybitModal } from './components/BybitModal';
 
 export default function App() {
   // Navigation
@@ -54,6 +55,7 @@ export default function App() {
   const [isIbkrModalOpen, setIsIbkrModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isDeribitModalOpen, setIsDeribitModalOpen] = useState(false);
+  const [isBybitModalOpen, setIsBybitModalOpen] = useState(false);
   const [chainRefreshTrigger, setChainRefreshTrigger] = useState(0);
 
   const reloadChain = useCallback(() => {
@@ -71,12 +73,22 @@ export default function App() {
   const [customRate, setCustomRate] = useState<number>(selectedAsset.riskFreeRate);
   const [customDiv, setCustomDiv] = useState<number>(selectedAsset.dividendYield);
 
-  // When asset changes, reset custom rates/dividends and set provider if crypto
+  // When asset changes, add to assets array if new, reset custom rates/dividends and set provider if crypto
   const handleSelectAsset = (asset: UnderlyingAsset) => {
+    setAssets((prev) => {
+      const exists = prev.some((a) => a.symbol === asset.symbol);
+      if (!exists) {
+        return [...prev, asset];
+      }
+      return prev.map((a) => (a.symbol === asset.symbol ? { ...a, ...asset } : a));
+    });
+
     setSelectedAsset(asset);
     if (asset.category === 'CRYPTO') {
-      setDataProvider('DERIBIT');
-    } else if (dataProvider === 'DERIBIT') {
+      if (dataProvider !== 'BYBIT' && dataProvider !== 'DERIBIT') {
+        setDataProvider('BYBIT');
+      }
+    } else if (dataProvider === 'DERIBIT' || dataProvider === 'BYBIT') {
       setDataProvider('INTERACTIVE_BROKERS');
     }
     setCustomRate(asset.riskFreeRate);
@@ -88,11 +100,15 @@ export default function App() {
 
   const handleOpenOrder = useCallback(() => {
     if (selectedAsset.category === 'CRYPTO') {
-      setIsDeribitModalOpen(true);
+      if (dataProvider === 'DERIBIT') {
+        setIsDeribitModalOpen(true);
+      } else {
+        setIsBybitModalOpen(true);
+      }
     } else {
       setIsOrderModalOpen(true);
     }
-  }, [selectedAsset]);
+  }, [selectedAsset, dataProvider]);
 
   // Option Chain state fetched from Cloud REST provider or precision model
   const [currentChain, setCurrentChain] = useState<OptionChainRow[]>(() =>
@@ -405,6 +421,7 @@ export default function App() {
         onOpenOrderModal={handleOpenOrder}
         isCrypto={selectedAsset.category === 'CRYPTO'}
         onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
+        onOpenBybitModal={() => setIsBybitModalOpen(true)}
       />
 
       {/* Main Container */}
@@ -422,6 +439,7 @@ export default function App() {
           onIbkrStatusChange={reloadChain}
           onOpenIbkrModal={() => setIsIbkrModalOpen(true)}
           onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
+          onOpenBybitModal={() => setIsBybitModalOpen(true)}
         />
 
         {/* 3. Always Visible Main Metrics Bar */}
@@ -443,6 +461,7 @@ export default function App() {
               onApplyPreset={handleApplyPreset}
               onOpenOrderModal={handleOpenOrder}
               onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
+              onOpenBybitModal={() => setIsBybitModalOpen(true)}
             />
 
             <StrategySummary
@@ -452,6 +471,7 @@ export default function App() {
               asset={selectedAsset}
               onOpenOrderModal={handleOpenOrder}
               onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
+              onOpenBybitModal={() => setIsBybitModalOpen(true)}
             />
 
             <OptionChain
@@ -466,6 +486,7 @@ export default function App() {
               isChainLoading={isChainLoading}
               onOpenIbkrModal={() => setIsIbkrModalOpen(true)}
               onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
+              onOpenBybitModal={() => setIsBybitModalOpen(true)}
             />
           </div>
         )}
@@ -633,6 +654,19 @@ export default function App() {
         legs={populatedLegs}
         asset={selectedAsset}
         strategyTitle="Strategia Opzioni Crypto Deribit"
+        onConfigChanged={reloadChain}
+      />
+
+      {/* Global Bybit V5 Crypto Modal (Ticket USDT, API Keys HMAC, UTA Stats) */}
+      <BybitModal
+        isOpen={isBybitModalOpen}
+        onClose={() => {
+          setIsBybitModalOpen(false);
+          reloadChain();
+        }}
+        legs={populatedLegs}
+        asset={selectedAsset}
+        strategyTitle="Strategia Opzioni Bybit V5"
         onConfigChanged={reloadChain}
       />
     </div>

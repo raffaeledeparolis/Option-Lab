@@ -16,6 +16,18 @@ import {
   testDeribitAuth,
   submitDeribitOrder,
 } from './src/services/deribitService';
+import {
+  loadBybitConfig,
+  saveBybitConfig,
+  loadBybitOrders,
+  saveBybitOrders,
+  fetchBybitSpotPrice,
+  fetchBybitExpirations,
+  fetchBybitOptionChain,
+  testBybitAuth,
+  submitBybitOrder,
+} from './src/services/bybitService';
+import { searchAssets, fetchAssetQuote } from './src/services/assetSearchService';
 
 dotenv.config();
 
@@ -813,6 +825,92 @@ app.post('/api/deribit/order/cancel', (req, res) => {
   }
 });
 
+// Bybit V5 API Endpoints
+app.get('/api/bybit/status', (_req, res) => {
+  const cfg = loadBybitConfig();
+  return res.json(cfg);
+});
+
+app.post('/api/bybit/connect', (req, res) => {
+  const current = loadBybitConfig();
+  const updated = {
+    ...current,
+    ...req.body,
+    lastChecked: new Date().toISOString(),
+  };
+  saveBybitConfig(updated);
+  return res.json({ success: true, config: updated });
+});
+
+app.post('/api/bybit/auth-test', async (req, res) => {
+  const env = req.body?.environment || 'TESTNET';
+  const apiKey = req.body?.apiKey || '';
+  const apiSecret = req.body?.apiSecret || '';
+  const result = await testBybitAuth(env, apiKey, apiSecret);
+  return res.json(result);
+});
+
+app.get('/api/bybit/index-price', async (req, res) => {
+  const currency = (String(req.query.currency || 'BTC')).toUpperCase() as 'BTC' | 'ETH' | 'SOL';
+  try {
+    const spotInfo = await fetchBybitSpotPrice(currency);
+    return res.json({ success: true, currency, ...spotInfo });
+  } catch (e: any) {
+    return res.json({ success: false, error: e.message });
+  }
+});
+
+app.get('/api/bybit/expirations', async (req, res) => {
+  const currency = (String(req.query.currency || 'BTC')).toUpperCase() as 'BTC' | 'ETH' | 'SOL';
+  try {
+    const expirations = await fetchBybitExpirations(currency);
+    return res.json({ success: true, currency, expirations });
+  } catch (e: any) {
+    return res.json({ success: false, error: e.message, expirations: [] });
+  }
+});
+
+app.get('/api/bybit/chain', async (req, res) => {
+  const currency = (String(req.query.currency || 'BTC')).toUpperCase() as 'BTC' | 'ETH' | 'SOL';
+  const dateParam = String(req.query.date || '');
+  try {
+    const result = await fetchBybitOptionChain(currency, dateParam);
+    return res.json(result);
+  } catch (e: any) {
+    return res.json({ isLive: false, error: e.message, chain: [] });
+  }
+});
+
+app.get('/api/bybit/orders', (_req, res) => {
+  const orders = loadBybitOrders();
+  return res.json({ success: true, orders });
+});
+
+app.post('/api/bybit/order', async (req, res) => {
+  const body = req.body;
+  const cfg = loadBybitConfig();
+  const env = body.environment || cfg.environment || 'TESTNET';
+  const apiKey = body.apiKey || cfg.apiKey || '';
+  const apiSecret = body.apiSecret || cfg.apiSecret || '';
+
+  const record = await submitBybitOrder(env, apiKey, apiSecret, body);
+  return res.json({ success: true, order: record });
+});
+
+app.post('/api/bybit/order/cancel', (req, res) => {
+  const { id, orderId } = req.body;
+  const currentOrders = loadBybitOrders();
+  const target = currentOrders.find((o) => o.id === id || o.orderId === orderId);
+  if (target) {
+    target.status = 'Cancelled';
+    target.message = `Ordine #${target.orderId} annullato dall'utente.`;
+    saveBybitOrders(currentOrders);
+    return res.json({ success: true, order: target });
+  } else {
+    return res.status(404).json({ success: false, error: 'Ordine Bybit non trovato' });
+  }
+});
+
 // Market Providers Status
 app.get('/api/market/providers-status', (_req, res) => {
   return res.json({
@@ -820,6 +918,11 @@ app.get('/api/market/providers-status', (_req, res) => {
       configured: true,
       name: 'Deribit API v2 (Crypto Options BTC/ETH/SOL)',
       envVar: 'DERIBIT_CLIENT_ID',
+    },
+    BYBIT: {
+      configured: true,
+      name: 'Bybit V5 (Crypto Options BTC/ETH/SOL)',
+      envVar: 'BYBIT_API_KEY',
     },
     MARKETDATA_APP: {
       configured: !!process.env.MARKETDATA_API_TOKEN,
@@ -839,14 +942,52 @@ app.get('/api/market/providers-status', (_req, res) => {
   });
 });
 
+// Dynamic Asset Search API (Bybit Spot + Yahoo Finance)
+app.get('/api/market/search-assets', async (req, res) => {
+  const query = String(req.query.query || '');
+  try {
+    const results = await searchAssets(query);
+    return res.json({ success: true, results });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message, results: [] });
+  }
+});
+
+// Real-time Asset Quote API
+app.get('/api/market/asset-quote', async (req, res) => {
+  const symbol = String(req.query.symbol || 'SPX');
+  const category = req.query.category ? String(req.query.category) : undefined;
+  try {
+    const asset = await fetchAssetQuote(symbol, category);
+    return res.json({ success: true, asset });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Market Option Chain Proxy
 app.get('/api/market/chain', async (req, res) => {
   const symbol = String(req.query.symbol || 'SPX');
   const expiration = String(req.query.date || '');
   const provider = String(req.query.provider || 'MARKETDATA_APP');
 
+  // Bybit V5 Crypto Options
+  if (provider === 'BYBIT') {
+    const currency = (['BTC', 'ETH', 'SOL'].includes(symbol.toUpperCase()) ? symbol.toUpperCase() : 'BTC') as 'BTC' | 'ETH' | 'SOL';
+    try {
+      const bybitData = await fetchBybitOptionChain(currency, expiration);
+      return res.json(bybitData);
+    } catch (err: any) {
+      return res.json({
+        isLive: false,
+        provider: 'BYBIT',
+        error: err.message,
+      });
+    }
+  }
+
   // Deribit Crypto Options
-  if (provider === 'DERIBIT' || ['BTC', 'ETH', 'SOL'].includes(symbol.toUpperCase())) {
+  if (provider === 'DERIBIT' || (['BTC', 'ETH', 'SOL'].includes(symbol.toUpperCase()) && provider !== 'BYBIT')) {
     const currency = (['BTC', 'ETH', 'SOL'].includes(symbol.toUpperCase()) ? symbol.toUpperCase() : 'BTC') as 'BTC' | 'ETH' | 'SOL';
     try {
       const deribitData = await fetchDeribitOptionChain(currency, expiration);

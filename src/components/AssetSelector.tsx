@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { UnderlyingAsset, DataProvider } from '../types/options';
-import { Radio, Zap, Coins } from 'lucide-react';
+import { Radio, Zap, Coins, Search, RefreshCw } from 'lucide-react';
 import { IbkrConfigModal } from './IbkrConfigModal';
-import { fetchDeribitStatus } from '../services/marketDataApi';
+import { AssetSearchModal } from './AssetSearchModal';
+import { fetchDeribitStatus, fetchBybitStatus, fetchAssetQuoteApi } from '../services/marketDataApi';
 
 interface AssetSelectorProps {
   assets: UnderlyingAsset[];
@@ -16,6 +17,7 @@ interface AssetSelectorProps {
   onIbkrStatusChange?: () => void;
   onOpenIbkrModal?: () => void;
   onOpenDeribitModal?: () => void;
+  onOpenBybitModal?: () => void;
 }
 
 export const AssetSelector: React.FC<AssetSelectorProps> = ({
@@ -30,11 +32,27 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
   onIbkrStatusChange,
   onOpenIbkrModal,
   onOpenDeribitModal,
+  onOpenBybitModal,
 }) => {
   const [isIbkrModalOpen, setIsIbkrModalOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [isRefreshingAsset, setIsRefreshingAsset] = useState(false);
   const [ibkrInfo, setIbkrInfo] = useState<{ connected: boolean; mode: string } | null>(null);
   const [deribitInfo, setDeribitInfo] = useState<{ connected: boolean; environment: string } | null>(null);
+  const [bybitInfo, setBybitInfo] = useState<{ connected: boolean; environment: string } | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'CRYPTO' | 'EQUITY_INDEX' | 'COMM_FX'>('ALL');
+
+  const handleRefreshCurrentAsset = async () => {
+    setIsRefreshingAsset(true);
+    try {
+      const refreshed = await fetchAssetQuoteApi(selectedAsset.symbol, selectedAsset.category);
+      if (refreshed) {
+        onSelectAsset(refreshed);
+      }
+    } finally {
+      setIsRefreshingAsset(false);
+    }
+  };
 
   const checkIbkrStatus = () => {
     fetch('/api/ibkr/status')
@@ -55,6 +73,14 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
     });
   };
 
+  const checkBybitStatus = () => {
+    fetchBybitStatus().then((b) => {
+      if (b) {
+        setBybitInfo({ connected: !!b.connected, environment: b.environment || 'TESTNET' });
+      }
+    });
+  };
+
   const handleOpenIbkrModal = () => {
     if (onOpenIbkrModal) {
       onOpenIbkrModal();
@@ -66,9 +92,11 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
   useEffect(() => {
     checkIbkrStatus();
     checkDeribitStatus();
+    checkBybitStatus();
   }, []);
 
   const providerLabels: Record<DataProvider, string> = {
+    BYBIT: 'Bybit V5 (Crypto Options USDT)',
     DERIBIT: 'Deribit API v2 (Crypto Options)',
     INTERACTIVE_BROKERS: 'Interactive Brokers (TWS API)',
     TRADIER: 'Tradier API',
@@ -117,7 +145,7 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
             }`}
           >
             <Coins className="w-3 h-3 text-amber-400" />
-            <span>Crypto Deribit (BTC, ETH, SOL)</span>
+            <span>Crypto (Bybit & Deribit)</span>
           </button>
           <button
             type="button"
@@ -143,22 +171,50 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
           </button>
         </div>
 
-        {/* Right side connection badges */}
+        {/* Right side connection badges & Asset Search */}
         <div className="flex items-center gap-2">
+          {/* API Asset Search Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsSearchModalOpen(true)}
+            className="px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 border border-amber-500/50 bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-500/20 text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 hover:border-amber-400 transition-all shadow-sm"
+            title="Cerca e seleziona qualsiasi asset dinamico via API (Crypto Bybit Spot, Azioni US, ETF, Indici)"
+          >
+            <Search className="w-3.5 h-3.5 text-amber-400" />
+            <span>Cerca Asset (API)</span>
+          </button>
+
+          {/* Bybit Connection Trigger */}
+          <button
+            type="button"
+            onClick={onOpenBybitModal}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 border transition-all ${
+              dataProvider === 'BYBIT'
+                ? 'border-amber-500/60 bg-amber-950/40 text-amber-300 shadow-sm ring-1 ring-amber-500/30'
+                : bybitInfo?.connected
+                ? 'border-amber-500/40 bg-amber-950/20 text-amber-300 hover:bg-amber-900/40'
+                : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200'
+            }`}
+            title="Connessione e Trading Opzioni Crypto Bybit V5 API"
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+            <span className="font-bold">Bybit: {bybitInfo?.environment || 'LIVE'}</span>
+          </button>
+
           {/* Deribit Connection Trigger */}
           <button
             type="button"
             onClick={onOpenDeribitModal}
             className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 border transition-all ${
-              isCurrentCrypto
-                ? 'border-amber-500/60 bg-amber-950/40 text-amber-300 shadow-sm ring-1 ring-amber-500/30'
+              dataProvider === 'DERIBIT' || (isCurrentCrypto && dataProvider !== 'BYBIT')
+                ? 'border-cyan-500/60 bg-cyan-950/40 text-cyan-300 shadow-sm ring-1 ring-cyan-500/30'
                 : deribitInfo?.connected
-                ? 'border-amber-500/40 bg-amber-950/20 text-amber-300 hover:bg-amber-900/40'
+                ? 'border-cyan-500/40 bg-cyan-950/20 text-cyan-300 hover:bg-cyan-900/40'
                 : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200'
             }`}
             title="Connessione e Trading Opzioni Crypto Deribit API v2"
           >
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
             <span className="font-bold">Deribit: {deribitInfo?.environment || 'LIVE'}</span>
           </button>
 
@@ -236,6 +292,17 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
               </button>
             );
           })}
+
+          {/* + Cerca Asset Button in row */}
+          <button
+            type="button"
+            onClick={() => setIsSearchModalOpen(true)}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 bg-slate-900/90 text-amber-300 hover:text-amber-200 hover:bg-slate-800 border border-amber-500/30 hover:border-amber-400/60 shadow-sm"
+            title="Cerca qualsiasi asset nel mercato globale o Bybit Spot via API"
+          >
+            <Search className="w-3.5 h-3.5 text-amber-400" />
+            <span>+ Cerca Asset API</span>
+          </button>
         </div>
 
         {/* Right: Data Provider select */}
@@ -270,6 +337,13 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
         }}
       />
 
+      <AssetSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        onSelectAsset={onSelectAsset}
+        currentSymbol={selectedAsset.symbol}
+      />
+
       {/* Underneath: Detailed Spot Bar */}
       <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-y-2 gap-x-4 text-xs text-slate-400">
         <div className="flex items-center gap-3">
@@ -277,7 +351,7 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
             {selectedAsset.name}
             {isCurrentCrypto && (
               <span className="px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold">
-                DERIBIT OPTION BOOK
+                {dataProvider === 'BYBIT' ? 'BYBIT V5 OPTION BOOK' : 'DERIBIT OPTION BOOK'}
               </span>
             )}
             <span
@@ -291,6 +365,17 @@ export const AssetSelector: React.FC<AssetSelectorProps> = ({
             >
               {selectedAsset.currency}{selectedAsset.spotPrice.toLocaleString('en-US', { minimumFractionDigits: selectedAsset.symbol === 'EURUSD' ? 4 : 2, maximumFractionDigits: selectedAsset.symbol === 'EURUSD' ? 4 : 2 })}
             </span>
+
+            {/* Refresh Quote via API */}
+            <button
+              type="button"
+              onClick={handleRefreshCurrentAsset}
+              disabled={isRefreshingAsset}
+              className="p-1 rounded text-slate-400 hover:text-amber-300 hover:bg-slate-800 transition-colors"
+              title="Aggiorna quotazione live via API (Bybit / Yahoo)"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingAsset ? 'animate-spin text-amber-400' : ''}`} />
+            </button>
           </span>
 
           <span

@@ -9,6 +9,7 @@ interface NavbarProps {
   onOpenOrderModal?: () => void;
   isCrypto?: boolean;
   onOpenDeribitModal?: () => void;
+  onOpenBybitModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -19,6 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenOrderModal,
   isCrypto,
   onOpenDeribitModal,
+  onOpenBybitModal,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3 transition-colors">
@@ -129,15 +131,29 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 3: Primary Action */}
         <div className="flex items-center gap-2 shrink-0">
-          {isCrypto && onOpenDeribitModal ? (
-            <button
-              onClick={onOpenDeribitModal}
-              className="px-3 py-1.5 text-xs font-bold text-amber-200 bg-amber-600/90 hover:bg-amber-500 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 shadow-sm shadow-amber-950/40 ring-1 ring-amber-400/50"
-              title="Apri Terminale Deribit API v2 (Book Live, Testnet/Mainnet & Gestione Ordini Crypto)"
-            >
-              <Coins className="w-3.5 h-3.5 text-amber-300" />
-              <span>Invia a Deribit</span>
-            </button>
+          {isCrypto ? (
+            <div className="flex items-center gap-1.5">
+              {onOpenBybitModal && (
+                <button
+                  onClick={onOpenBybitModal}
+                  className="px-2.5 py-1.5 text-xs font-bold text-amber-200 bg-amber-600/90 hover:bg-amber-500 rounded-lg transition-all whitespace-nowrap flex items-center gap-1 shadow-sm ring-1 ring-amber-400/50"
+                  title="Apri Terminale Bybit V5 Options (Ordini USDT, Testnet/Mainnet & Margine UTA)"
+                >
+                  <Coins className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Bybit V5</span>
+                </button>
+              )}
+              {onOpenDeribitModal && (
+                <button
+                  onClick={onOpenDeribitModal}
+                  className="px-2.5 py-1.5 text-xs font-bold text-cyan-200 bg-cyan-700/80 hover:bg-cyan-600 rounded-lg transition-all whitespace-nowrap flex items-center gap-1 shadow-sm ring-1 ring-cyan-400/50"
+                  title="Apri Terminale Deribit API v2 (Book Live, Testnet/Mainnet & Gestione Ordini Crypto)"
+                >
+                  <Coins className="w-3.5 h-3.5 text-cyan-300" />
+                  <span>Deribit</span>
+                </button>
+              )}
+            </div>
           ) : (
             onOpenOrderModal && legsCount > 0 && (
               <button

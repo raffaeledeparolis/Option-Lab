@@ -36,7 +36,20 @@ export interface UnderlyingAsset {
   currency: string;
   contractMultiplier: number; // default 100 (or 1 for crypto)
   tickSize: number;
-  cryptoCurrency?: 'BTC' | 'ETH' | 'SOL';
+  cryptoCurrency?: string;
+  exchange?: string;
+}
+
+export interface SearchResultAsset {
+  symbol: string;
+  name: string;
+  category: 'INDEX' | 'ETF' | 'EQUITY' | 'FX' | 'COMMODITY' | 'CRYPTO';
+  spotPrice?: number;
+  change24h?: number;
+  change24hPercent?: number;
+  exchange?: string;
+  currency?: string;
+  isPopular?: boolean;
 }
 
 export interface OptionContract {
@@ -116,6 +129,7 @@ export interface StrategyPreset {
 export type DataProvider = 
   | 'INTERACTIVE_BROKERS'
   | 'DERIBIT'
+  | 'BYBIT'
   | 'TRADIER'
   | 'POLYGON'
   | 'CBOE_DATASHOP'
@@ -214,6 +228,49 @@ export interface DeribitOrderRecord {
   timeInForce: 'good_til_cancelled' | 'immediate_or_cancel' | 'fill_or_kill';
   postOnly?: boolean;
   status: 'open' | 'filled' | 'cancelled' | 'rejected' | 'simulated';
+  legsCount: number;
+  legsSummary: string;
+  submittedAt: string;
+  environment: 'TESTNET' | 'MAINNET';
+  message: string;
+  rawResponse?: any;
+}
+
+export interface BybitConfig {
+  connected: boolean;
+  environment: 'TESTNET' | 'MAINNET';
+  apiKey?: string;
+  apiSecret?: string;
+  accountType?: 'UNIFIED' | 'CONTRACT';
+  currency: 'BTC' | 'ETH' | 'SOL';
+  settlementCoin?: 'USDT' | 'USDC';
+  lastChecked?: string;
+  message?: string;
+}
+
+export interface BybitOrderLeg {
+  action: LegAction;
+  quantity: number;
+  strike: number;
+  type: OptionType;
+  expiration: string;
+  premiumUsd: number;
+  premiumCrypto?: number;
+  symbol: string;
+}
+
+export interface BybitOrderRecord {
+  id: string;
+  orderId: string;
+  orderLinkId?: string;
+  symbol: string;
+  currency: 'BTC' | 'ETH' | 'SOL';
+  strategyName: string;
+  orderType: 'Limit' | 'Market';
+  price: number;
+  qty: number;
+  timeInForce: 'GTC' | 'IOC' | 'FOK' | 'PostOnly';
+  status: 'New' | 'PartiallyFilled' | 'Filled' | 'Cancelled' | 'Rejected' | 'Simulated';
   legsCount: number;
   legsSummary: string;
   submittedAt: string;

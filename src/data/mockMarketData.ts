@@ -139,7 +139,7 @@ export const UNDERLYING_ASSETS: UnderlyingAsset[] = [
   },
   {
     symbol: 'BTC',
-    name: 'Bitcoin (Deribit Options)',
+    name: 'Bitcoin (Bybit & Deribit Options)',
     category: 'CRYPTO',
     spotPrice: 80250.00,
     change24h: 1420.00,
@@ -149,13 +149,13 @@ export const UNDERLYING_ASSETS: UnderlyingAsset[] = [
     riskFreeRate: 0.045,
     dividendYield: 0.0,
     currency: '$',
-    contractMultiplier: 1, // Deribit standard contract
+    contractMultiplier: 1, // Standard crypto options contract
     tickSize: 1000.0,
     cryptoCurrency: 'BTC',
   },
   {
     symbol: 'ETH',
-    name: 'Ethereum (Deribit Options)',
+    name: 'Ethereum (Bybit & Deribit Options)',
     category: 'CRYPTO',
     spotPrice: 2330.00,
     change24h: 38.50,
@@ -171,7 +171,7 @@ export const UNDERLYING_ASSETS: UnderlyingAsset[] = [
   },
   {
     symbol: 'SOL',
-    name: 'Solana (Deribit Options)',
+    name: 'Solana (Bybit & Deribit Options)',
     category: 'CRYPTO',
     spotPrice: 174.50,
     change24h: 5.20,

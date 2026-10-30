@@ -16,6 +16,18 @@ import {
   testDeribitAuth,
   submitDeribitOrder,
 } from './src/services/deribitService';
+import {
+  loadBybitConfig,
+  saveBybitConfig,
+  loadBybitOrders,
+  saveBybitOrders,
+  fetchBybitSpotPrice,
+  fetchBybitExpirations,
+  fetchBybitOptionChain,
+  testBybitAuth,
+  submitBybitOrder,
+} from './src/services/bybitService';
+import { searchAssets, fetchAssetQuote } from './src/services/assetSearchService';
 
 dotenv.config();
 
@@ -787,6 +799,121 @@ function apiEndpointsPlugin(): Plugin {
           return;
         }
 
+        // 2e. Bybit V5 API Endpoints
+        if (req.url === '/api/bybit/status' && req.method === 'GET') {
+          const cfg = loadBybitConfig();
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(cfg));
+          return;
+        }
+
+        if (req.url === '/api/bybit/connect' && req.method === 'POST') {
+          const body = await readBody();
+          const current = loadBybitConfig();
+          const updated = {
+            ...current,
+            ...body,
+            lastChecked: new Date().toISOString(),
+          };
+          saveBybitConfig(updated);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, config: updated }));
+          return;
+        }
+
+        if (req.url === '/api/bybit/auth-test' && req.method === 'POST') {
+          const body = await readBody();
+          const env = body.environment || 'TESTNET';
+          const apiKey = body.apiKey || '';
+          const apiSecret = body.apiSecret || '';
+          const result = await testBybitAuth(env, apiKey, apiSecret);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(result));
+          return;
+        }
+
+        if (req.url?.startsWith('/api/bybit/index-price') && req.method === 'GET') {
+          const urlObj = new URL(req.url, 'http://localhost:3000');
+          const currency = (urlObj.searchParams.get('currency') || 'BTC').toUpperCase() as 'BTC' | 'ETH' | 'SOL';
+          try {
+            const spotInfo = await fetchBybitSpotPrice(currency);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, currency, ...spotInfo }));
+          } catch (e: any) {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: e.message }));
+          }
+          return;
+        }
+
+        if (req.url?.startsWith('/api/bybit/expirations') && req.method === 'GET') {
+          const urlObj = new URL(req.url, 'http://localhost:3000');
+          const currency = (urlObj.searchParams.get('currency') || 'BTC').toUpperCase() as 'BTC' | 'ETH' | 'SOL';
+          try {
+            const expirations = await fetchBybitExpirations(currency);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, currency, expirations }));
+          } catch (e: any) {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: e.message, expirations: [] }));
+          }
+          return;
+        }
+
+        if (req.url?.startsWith('/api/bybit/chain') && req.method === 'GET') {
+          const urlObj = new URL(req.url, 'http://localhost:3000');
+          const currency = (urlObj.searchParams.get('currency') || 'BTC').toUpperCase() as 'BTC' | 'ETH' | 'SOL';
+          const dateParam = urlObj.searchParams.get('date') || '';
+          try {
+            const result = await fetchBybitOptionChain(currency, dateParam);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(result));
+          } catch (e: any) {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ isLive: false, error: e.message, chain: [] }));
+          }
+          return;
+        }
+
+        if (req.url === '/api/bybit/orders' && req.method === 'GET') {
+          const orders = loadBybitOrders();
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, orders }));
+          return;
+        }
+
+        if (req.url === '/api/bybit/order' && req.method === 'POST') {
+          const body = await readBody();
+          const cfg = loadBybitConfig();
+          const env = body.environment || cfg.environment || 'TESTNET';
+          const apiKey = body.apiKey || cfg.apiKey || '';
+          const apiSecret = body.apiSecret || cfg.apiSecret || '';
+
+          const record = await submitBybitOrder(env, apiKey, apiSecret, body);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, order: record }));
+          return;
+        }
+
+        if (req.url === '/api/bybit/order/cancel' && req.method === 'POST') {
+          const body = await readBody();
+          const { id, orderId } = body;
+          const currentOrders = loadBybitOrders();
+          const target = currentOrders.find((o) => o.id === id || o.orderId === orderId);
+          if (target) {
+            target.status = 'Cancelled';
+            target.message = `Ordine #${target.orderId} annullato dall'utente.`;
+            saveBybitOrders(currentOrders);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, order: target }));
+          } else {
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = 404;
+            res.end(JSON.stringify({ success: false, error: 'Ordine Bybit non trovato' }));
+          }
+          return;
+        }
+
         // 3. Gemini Advisor
         if (req.url === '/api/gemini/advisor' && req.method === 'POST') {
           const body = await readBody();
@@ -889,6 +1016,11 @@ Fornisci una strategia tra quelle canoniche (Bull Call Spread, Iron Condor, 0DTE
                 name: 'Deribit API v2 (Crypto Options BTC/ETH/SOL)',
                 envVar: 'DERIBIT_CLIENT_ID',
               },
+              BYBIT: {
+                configured: true,
+                name: 'Bybit V5 (Crypto Options BTC/ETH/SOL)',
+                envVar: 'BYBIT_API_KEY',
+              },
               MARKETDATA_APP: {
                 configured: !!process.env.MARKETDATA_API_TOKEN,
                 name: 'MarketData.app (Live CBOE/OPRA)',
@@ -909,6 +1041,39 @@ Fornisci una strategia tra quelle canoniche (Bull Call Spread, Iron Condor, 0DTE
           return;
         }
 
+        // 4b. Dynamic Asset Search API (Bybit Spot + Yahoo Finance)
+        if (req.url?.startsWith('/api/market/search-assets') && req.method === 'GET') {
+          const urlObj = new URL(req.url, 'http://localhost:3000');
+          const query = urlObj.searchParams.get('query') || '';
+          try {
+            const results = await searchAssets(query);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, results }));
+          } catch (err: any) {
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = 500;
+            res.end(JSON.stringify({ success: false, error: err.message, results: [] }));
+          }
+          return;
+        }
+
+        // 4c. Real-time Asset Quote API
+        if (req.url?.startsWith('/api/market/asset-quote') && req.method === 'GET') {
+          const urlObj = new URL(req.url, 'http://localhost:3000');
+          const symbol = urlObj.searchParams.get('symbol') || 'SPX';
+          const category = urlObj.searchParams.get('category') || undefined;
+          try {
+            const asset = await fetchAssetQuote(symbol, category);
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, asset }));
+          } catch (err: any) {
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = 500;
+            res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+          return;
+        }
+
         // 5. Live Market Option Chain Proxy
         if (req.url?.startsWith('/api/market/chain') && req.method === 'GET') {
           const urlObj = new URL(req.url, 'http://localhost:3000');
@@ -916,8 +1081,29 @@ Fornisci una strategia tra quelle canoniche (Bull Call Spread, Iron Condor, 0DTE
           const expiration = urlObj.searchParams.get('date') || '';
           const provider = urlObj.searchParams.get('provider') || 'MARKETDATA_APP';
 
-          // 0a. Deribit Crypto Options Feed
-          if (provider === 'DERIBIT' || ['BTC', 'ETH', 'SOL'].includes(symbol.toUpperCase())) {
+          // 0a. Bybit V5 Options Feed
+          if (provider === 'BYBIT') {
+            const currency = (['BTC', 'ETH', 'SOL'].includes(symbol.toUpperCase()) ? symbol.toUpperCase() : 'BTC') as 'BTC' | 'ETH' | 'SOL';
+            try {
+              const bybitData = await fetchBybitOptionChain(currency, expiration);
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify(bybitData));
+              return;
+            } catch (err: any) {
+              res.setHeader('Content-Type', 'application/json');
+              res.end(
+                JSON.stringify({
+                  isLive: false,
+                  provider: 'BYBIT',
+                  error: err.message,
+                })
+              );
+              return;
+            }
+          }
+
+          // 0b. Deribit Crypto Options Feed
+          if (provider === 'DERIBIT' || (['BTC', 'ETH', 'SOL'].includes(symbol.toUpperCase()) && provider !== 'BYBIT')) {
             const currency = (['BTC', 'ETH', 'SOL'].includes(symbol.toUpperCase()) ? symbol.toUpperCase() : 'BTC') as 'BTC' | 'ETH' | 'SOL';
             try {
               const deribitData = await fetchDeribitOptionChain(currency, expiration);

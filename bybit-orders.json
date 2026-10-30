@@ -1,0 +1,20 @@
+[
+  {
+    "id": "bybit_1792952031038_ti9m",
+    "orderId": "BYBIT-SIM-156613",
+    "orderLinkId": "optlab_52031038",
+    "symbol": "BTC-27NOV26-80000-C-USDT",
+    "currency": "BTC",
+    "strategyName": "Bull Call Spread Test",
+    "orderType": "Limit",
+    "price": 850,
+    "qty": 1,
+    "timeInForce": "GTC",
+    "status": "Cancelled",
+    "legsCount": 1,
+    "legsSummary": "Buy 1x BTC-27NOV26-80000-C-USDT @ $850",
+    "submittedAt": "2026-10-25T18:13:51.038Z",
+    "environment": "TESTNET",
+    "message": "Ordine #BYBIT-SIM-156613 annullato dall'utente."
+  }
+]

@@ -28,6 +28,7 @@ interface OptionChainProps {
   isChainLoading?: boolean;
   onOpenIbkrModal?: () => void;
   onOpenDeribitModal?: () => void;
+  onOpenBybitModal?: () => void;
 }
 
 export const OptionChain: React.FC<OptionChainProps> = ({
@@ -42,6 +43,7 @@ export const OptionChain: React.FC<OptionChainProps> = ({
   isChainLoading,
   onOpenIbkrModal,
   onOpenDeribitModal,
+  onOpenBybitModal,
 }) => {
   const [filterView, setFilterView] = useState<'ALL' | 'NEAR_ATM' | 'DELTA_15_30'>('NEAR_ATM');
   const [showGreeksInChain, setShowGreeksInChain] = useState(true);
@@ -198,13 +200,24 @@ export const OptionChain: React.FC<OptionChainProps> = ({
               </span>
             )}
 
+            {(chainSourceInfo.provider === 'BYBIT' || (asset.category === 'CRYPTO' && onOpenBybitModal)) && onOpenBybitModal && (
+              <button
+                type="button"
+                onClick={onOpenBybitModal}
+                className="px-2.5 py-0.5 rounded text-[11px] font-semibold border transition-colors bg-amber-500/20 border-amber-500/50 text-amber-300 hover:bg-amber-500/30 flex items-center gap-1"
+              >
+                <Coins className="w-3 h-3 text-amber-300" />
+                <span>Terminale & API Bybit</span>
+              </button>
+            )}
+
             {(chainSourceInfo.provider === 'DERIBIT' || asset.category === 'CRYPTO') && onOpenDeribitModal && (
               <button
                 type="button"
                 onClick={onOpenDeribitModal}
-                className="px-2.5 py-0.5 rounded text-[11px] font-semibold border transition-colors bg-amber-950/60 border-amber-500/50 text-amber-300 hover:bg-amber-900/60 flex items-center gap-1"
+                className="px-2.5 py-0.5 rounded text-[11px] font-semibold border transition-colors bg-cyan-950/60 border-cyan-500/50 text-cyan-300 hover:bg-cyan-900/60 flex items-center gap-1"
               >
-                <Coins className="w-3 h-3 text-amber-300" />
+                <Coins className="w-3 h-3 text-cyan-300" />
                 <span>Terminale & API Deribit</span>
               </button>
             )}

@@ -9,6 +9,7 @@ interface StrategySummaryProps {
   asset: UnderlyingAsset;
   onOpenOrderModal?: () => void;
   onOpenDeribitModal?: () => void;
+  onOpenBybitModal?: () => void;
 }
 
 export const StrategySummary: React.FC<StrategySummaryProps> = ({
@@ -18,6 +19,7 @@ export const StrategySummary: React.FC<StrategySummaryProps> = ({
   asset,
   onOpenOrderModal,
   onOpenDeribitModal,
+  onOpenBybitModal,
 }) => {
   if (legs.length === 0) return null;
 
@@ -194,25 +196,39 @@ export const StrategySummary: React.FC<StrategySummaryProps> = ({
       </div>
 
       {/* Quick Execution Toolbar */}
-      {(onOpenDeribitModal || onOpenOrderModal) && (
+      {(onOpenBybitModal || onOpenDeribitModal || onOpenOrderModal) && (
         <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2.5">
           <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
             <span className={`w-2 h-2 rounded-full ${asset.category === 'CRYPTO' ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
             <span>
               {asset.category === 'CRYPTO'
-                ? `Pronto per l'esecuzione su Deribit API v2 (${asset.cryptoCurrency || asset.symbol} European Cash-Settled).`
+                ? `Pronto per l'esecuzione su Bybit V5 o Deribit (${asset.cryptoCurrency || asset.symbol} European Cash-Settled).`
                 : "Pronto per l'esecuzione del trade multi-gamba su Trader Workstation (IBKR)."}
             </span>
           </div>
           {asset.category === 'CRYPTO' ? (
-            <button
-              type="button"
-              onClick={onOpenDeribitModal || onOpenOrderModal}
-              className="w-full sm:w-auto px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-amber-100 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-950/40 hover:shadow-amber-900/60 ring-1 ring-amber-400/40"
-            >
-              <Coins className="w-3.5 h-3.5 text-amber-200" />
-              <span>Invia Ordine {strategyTitle} a Deribit</span>
-            </button>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {onOpenBybitModal && (
+                <button
+                  type="button"
+                  onClick={onOpenBybitModal}
+                  className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-amber-100 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-amber-950/40 ring-1 ring-amber-400/40"
+                >
+                  <Coins className="w-3.5 h-3.5 text-amber-200" />
+                  <span>Invia a Bybit</span>
+                </button>
+              )}
+              {onOpenDeribitModal && (
+                <button
+                  type="button"
+                  onClick={onOpenDeribitModal}
+                  className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-cyan-100 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-cyan-950/40 ring-1 ring-cyan-400/40"
+                >
+                  <Coins className="w-3.5 h-3.5 text-cyan-200" />
+                  <span>Invia a Deribit</span>
+                </button>
+              )}
+            </div>
           ) : (
             <button
               type="button"
