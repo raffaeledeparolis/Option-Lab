@@ -37,12 +37,13 @@ import { IbkrConfigModal } from './components/IbkrConfigModal';
 import { IbkrOrderModal } from './components/IbkrOrderModal';
 import { DeribitModal } from './components/DeribitModal';
 import { BybitModal } from './components/BybitModal';
+import { GlobalMarketOverview } from './components/GlobalMarketOverview';
 
 export default function App() {
-  // Navigation
+  // Navigation - default to Main Page / Global Overview
   const [activeTab, setActiveTab] = useState<
-    'builder' | 'payoff' | 'scenario' | 'greeks' | 'monte-carlo' | 'comparator' | 'ai-advisor'
-  >('builder');
+    'overview' | 'builder' | 'payoff' | 'scenario' | 'greeks' | 'monte-carlo' | 'comparator' | 'ai-advisor'
+  >('overview');
 
   // Asset & Market Data
   const [assets, setAssets] = useState<UnderlyingAsset[]>(UNDERLYING_ASSETS);
@@ -401,6 +402,7 @@ export default function App() {
       });
 
       setLegs(generatedLegs);
+      setActiveTab('builder');
     },
     [selectedAsset, selectedExpiration]
   );
@@ -426,24 +428,45 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4">
-        {/* 2. Asset Selector & Live Heartbeat */}
-        <AssetSelector
-          assets={assets}
-          selectedAsset={selectedAsset}
-          onSelectAsset={handleSelectAsset}
-          dataProvider={dataProvider}
-          onChangeDataProvider={setDataProvider}
-          isLiveStreaming={isLiveStreaming}
-          onToggleLiveStreaming={() => setIsLiveStreaming(!isLiveStreaming)}
-          lastTickDirection={lastTickDirection}
-          onIbkrStatusChange={reloadChain}
-          onOpenIbkrModal={() => setIsIbkrModalOpen(true)}
-          onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
-          onOpenBybitModal={() => setIsBybitModalOpen(true)}
-        />
+        {/* MAIN PAGE / GLOBAL MARKET OVERVIEW */}
+        {activeTab === 'overview' && (
+          <GlobalMarketOverview
+            assets={assets}
+            selectedAsset={selectedAsset}
+            onSelectAsset={handleSelectAsset}
+            dataProvider={dataProvider}
+            onChangeDataProvider={setDataProvider}
+            onOpenTradingDesk={() => setActiveTab('builder')}
+            onOpenAiAdvisor={() => setActiveTab('ai-advisor')}
+            onOpenBybitModal={() => setIsBybitModalOpen(true)}
+            onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
+            onOpenIbkrModal={() => setIsIbkrModalOpen(true)}
+          />
+        )}
 
-        {/* 3. Always Visible Main Metrics Bar */}
-        <KeyMetricsBar metrics={metrics} currency={selectedAsset.currency} />
+        {/* Sub-Tabs: Trading Desk, Option Chain, Payoff & Analytics */}
+        {activeTab !== 'overview' && (
+          <>
+            {/* Asset Selector & Live Heartbeat */}
+            <AssetSelector
+              assets={assets}
+              selectedAsset={selectedAsset}
+              onSelectAsset={handleSelectAsset}
+              dataProvider={dataProvider}
+              onChangeDataProvider={setDataProvider}
+              isLiveStreaming={isLiveStreaming}
+              onToggleLiveStreaming={() => setIsLiveStreaming(!isLiveStreaming)}
+              lastTickDirection={lastTickDirection}
+              onIbkrStatusChange={reloadChain}
+              onOpenIbkrModal={() => setIsIbkrModalOpen(true)}
+              onOpenDeribitModal={() => setIsDeribitModalOpen(true)}
+              onOpenBybitModal={() => setIsBybitModalOpen(true)}
+            />
+
+            {/* Main Metrics Bar */}
+            <KeyMetricsBar metrics={metrics} currency={selectedAsset.currency} />
+          </>
+        )}
 
         {/* 4. Tab Views */}
 
@@ -609,8 +632,13 @@ export default function App() {
             <AiStrategicAssistant
               asset={selectedAsset}
               currentLegs={populatedLegs}
+              availableChain={currentChain}
+              selectedExpiration={selectedExpiration}
+              availableExpirations={expirations}
               onApplyPreset={handleApplyPreset}
               onReplaceLegs={setLegs}
+              onNavigateToBuilder={() => setActiveTab('builder')}
+              onOpenOrderModal={handleOpenOrder}
             />
           </div>
         )}

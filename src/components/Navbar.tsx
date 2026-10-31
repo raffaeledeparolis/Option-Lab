@@ -1,9 +1,9 @@
 import React from 'react';
-import { Layers, Activity, Sparkles, SlidersHorizontal, Grid3X3, BarChart2, GitCompare, Send, Coins } from 'lucide-react';
+import { Layers, Activity, Sparkles, SlidersHorizontal, Grid3X3, BarChart2, GitCompare, Send, Coins, Globe } from 'lucide-react';
 
 interface NavbarProps {
-  activeTab: 'builder' | 'payoff' | 'scenario' | 'greeks' | 'monte-carlo' | 'comparator' | 'ai-advisor';
-  setActiveTab: (tab: 'builder' | 'payoff' | 'scenario' | 'greeks' | 'monte-carlo' | 'comparator' | 'ai-advisor') => void;
+  activeTab: 'overview' | 'builder' | 'payoff' | 'scenario' | 'greeks' | 'monte-carlo' | 'comparator' | 'ai-advisor';
+  setActiveTab: (tab: 'overview' | 'builder' | 'payoff' | 'scenario' | 'greeks' | 'monte-carlo' | 'comparator' | 'ai-advisor') => void;
   legsCount: number;
   onResetStrategy: () => void;
   onOpenOrderModal?: () => void;
@@ -26,7 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3 transition-colors">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 md:gap-8">
         {/* Zone 1: Brand Wordmark */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 shrink-0 cursor-pointer" onClick={() => setActiveTab('overview')}>
           <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
             <Layers className="w-4 h-4" />
           </div>
@@ -39,6 +39,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 2: Navigation Links */}
         <nav className="hidden lg:flex items-center gap-1 xl:gap-2 text-xs font-medium text-slate-300">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-3 py-1.5 rounded-md transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'overview'
+                ? 'bg-cyan-950/80 text-cyan-300 shadow-sm ring-1 ring-cyan-500/40 font-bold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Mercati Globali</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('builder')}
             className={`px-3 py-1.5 rounded-md transition-all whitespace-nowrap flex items-center gap-1.5 ${
@@ -178,6 +190,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Mobile Nav row */}
       <div className="flex lg:hidden overflow-x-auto gap-1 pt-2.5 mt-2 border-t border-slate-900 text-xs no-scrollbar">
         {[
+          { id: 'overview', label: 'Mercati Globali' },
           { id: 'builder', label: 'Builder' },
           { id: 'payoff', label: 'Payoff & 0DTE' },
           { id: 'scenario', label: 'Heatmap' },

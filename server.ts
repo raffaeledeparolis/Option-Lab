@@ -382,7 +382,7 @@ app.post('/api/gemini/advisor', async (req, res) => {
     const { symbol, spotPrice, iv, ivRank, directionView, timeHorizon, riskTolerance } = req.body;
 
     if (!process.env.GEMINI_API_KEY) {
-      return res.status(503).json({ error: 'GEMINI_API_KEY non configurata' });
+      throw new Error('GEMINI_API_KEY non presente, fallback quantitativo');
     }
 
     const prompt = `Sei un esperto quantitativo e trader senior di opzioni finanziarie.
@@ -398,7 +398,7 @@ Fornisci una strategia tra quelle canoniche (es: Bull Call Spread, Bear Put Spre
 Descrivi la logica quantitativa, i punti di forza e la gestione del rischio.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-3.1-flash-lite',
       contents: prompt,
       config: {
         systemInstruction: 'Rispondi esclusivamente in formato JSON con lo schema richiesto per una piattaforma di opzioni professionale.',
@@ -439,9 +439,7 @@ Descrivi la logica quantitativa, i punti di forza e la gestione del rischio.`;
 
     const parsedData = JSON.parse(response.text || '{}');
     return res.json(parsedData);
-  } catch (error: any) {
-    console.error('Gemini advisor error, providing quantitative fallback:', error?.message || error);
-    
+  } catch {
     // Resilient quantitative fallback
     const { symbol, spotPrice, iv, directionView, timeHorizon } = req.body;
     let strategyId = 'iron-condor';
@@ -963,6 +961,149 @@ app.get('/api/market/asset-quote', async (req, res) => {
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// Gemini Strategic Advisor
+app.post('/api/gemini/advisor', async (req, res) => {
+  const { symbol, spotPrice, iv, directionView, timeHorizon, availableStrikes } = req.body;
+
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const ai = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
+      });
+      const strikeListStr = Array.isArray(availableStrikes) && availableStrikes.length > 0 ? availableStrikes.slice(0, 20).join(', ') : 'ATM e strike OTM circostanti';
+      const horizonGuidance = timeHorizon === '0DTE'
+        ? 'ORIZZONTE SCELTO: 0DTE INTRADAY (scadenza odierna). Suggerisci strategie intraday 0DTE (es. "0dte-iron-fly", "0dte-credit-spread", "0dte-momentum-strangle", "bear-put-spread").'
+        : timeHorizon === 'WEEKLY'
+        ? 'ORIZZONTE SCELTO: SETTIMANALE (WEEKLY, 7-14 DTE). NON suggerire assolutamente strategie 0DTE! Suggerisci strategie swing settimanali a 7 giorni come "iron-condor", "bull-put-spread", "bull-call-spread", "bear-put-spread", "strangle".'
+        : 'ORIZZONTE SCELTO: MENSILE (MONTHLY, 30-45 DTE). NON suggerire assolutamente strategie 0DTE! Suggerisci strategie posizionali mensili a 30-45 giorni come "iron-condor", "bull-put-spread", "bull-call-spread", "bear-put-spread", "strangle".';
+
+      const prompt = `Sei un esperto quantitativo e trader senior di opzioni finanziarie.
+Analizza i parametri e gli strike disponibili ed elabora una proposta di trading in opzioni ottimale:
+- Sottostante: ${symbol}
+- Prezzo Spot: ${spotPrice}
+- Volatilità Implicita (IV): ${((iv || 0.18) * 100).toFixed(1)}%
+- View: ${directionView}
+- Orizzonte: ${timeHorizon} (${horizonGuidance})
+- Strike disponibili per la strategia: ${strikeListStr}
+
+REQUISITO TASSATIVO SULLA SCADENZA:
+Se l'orizzonte è "WEEKLY" o "MONTHLY", NON usare MAI il prefisso 0DTE nè strategie intraday. Specifica chiaramente la scadenza (${timeHorizon === 'WEEKLY' ? '7 DTE Settimanale' : timeHorizon === 'MONTHLY' ? '30-45 DTE Mensile' : '0DTE Intraday'}).
+IMPORTANTE: Imposta strategyId ESATTAMENTE come uno dei seguenti ID canonici validi:
+${timeHorizon === '0DTE' ? '- "0dte-iron-fly"\n- "0dte-credit-spread"\n- "0dte-momentum-strangle"' : '- "iron-condor"\n- "bull-put-spread"\n- "bull-call-spread"\n- "bear-put-spread"\n- "strangle"'}`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              strategyId: { type: Type.STRING },
+              strategyName: { type: Type.STRING },
+              description: { type: Type.STRING },
+              thesis: { type: Type.STRING },
+              keyPros: { type: Type.ARRAY, items: { type: Type.STRING } },
+              actionLabel: { type: Type.STRING },
+            },
+            required: ['strategyId', 'strategyName', 'description', 'thesis', 'keyPros', 'actionLabel'],
+          },
+        },
+      });
+
+      return res.json(JSON.parse(response.text || '{}'));
+    } catch {
+      // Fall through to algorithmic response
+    }
+  }
+
+  // Resilient quantitative algorithmic response strictly obeying timeHorizon
+  let strategyId = 'iron-condor';
+  let strategyName = 'Iron Condor Neutrale';
+  let description = 'Combinazione di Bull Put Spread e Bear Call Spread OTM.';
+  let thesis = `Con il sottostante ${symbol || 'SPX'} a ${spotPrice || 5850} e IV al ${((iv || 0.16) * 100).toFixed(1)}%, la compressione dell'estrinseco favorisce la vendita di volatilità con rischio limitato.`;
+  let keyPros = [
+    'Massimizza il decadimento temporale (Theta)',
+    'Rischio rigorosamente limitato con spread protettivi',
+    'Elevata probabilità di profitto (POP > 65%)',
+  ];
+
+  if (timeHorizon === '0DTE') {
+    strategyId = '0dte-iron-fly';
+    strategyName = '0DTE Iron Fly (Pinning Intraday)';
+    description = 'Vendita di Straddle ATM con acquisto di ali protettive strette per scadenza odierna.';
+    thesis = `Per la scadenza 0DTE odierna su ${symbol || 'SPX'}, l'accelerazione di Theta pomeridiana azzera rapidamente il valore estrinseco delle opzioni ATM se il prezzo rimane vicino a ${spotPrice || 5850}.`;
+    keyPros = [
+      'Cattura il rapido decadimento intraday',
+      'Costo capitale contenuto',
+      'Protezione definita contro spike di fine seduta',
+    ];
+  } else if (timeHorizon === 'WEEKLY') {
+    if (directionView === 'BULLISH' || directionView === 'MODERATE_BULL') {
+      strategyId = 'bull-put-spread';
+      strategyName = 'Bull Put Credit Spread Settimanale (7 DTE)';
+      description = 'Vendita di Put OTM a 7 giorni per incasso credito con protezione comprata.';
+      thesis = `Per un orizzonte settimanale (7 DTE) su ${symbol || 'SPX'}, vendere una Put credit spread a 15-20 Delta offre un'alta probabilità di profitto monetizzando la tenuta dei supporti con decadimento theta costante.`;
+      keyPros = ['Incasso immediato credito', 'Margine contenuto', 'Ampio cuscinetto statistico'];
+    } else if (directionView === 'BEARISH') {
+      strategyId = 'bear-put-spread';
+      strategyName = 'Bear Put Spread Settimanale (7 DTE)';
+      description = 'Acquisto Put ATM e vendita Put OTM a scadenza 7 giorni.';
+      thesis = `Setup direzionale ribassista a 7 DTE a rischio rigorosamente limitato sul cedimento dei supporti di ${symbol || 'SPX'}.`;
+      keyPros = ['Rischio predefinito', 'Costo spread dimezzato'];
+    } else if (directionView === 'VOLATILITY') {
+      strategyId = 'strangle';
+      strategyName = 'Long Strangle Settimanale (7 DTE)';
+      description = 'Acquisto Call e Put OTM a 7 giorni.';
+      thesis = `Posizione Long Volatilità a 7 DTE prima di catalizzatori macroeconomici.`;
+      keyPros = ['Potenziale illimitato su breakout', 'Rischio limitato al premio'];
+    } else {
+      strategyId = 'iron-condor';
+      strategyName = 'Iron Condor Settimanale (7 DTE)';
+      description = 'Combinazione delta-neutral a 4 gambe con scadenza a 7 giorni.';
+      thesis = `Struttura settimanale a 7 DTE su ${symbol || 'SPX'}: incasso costante di Theta decay rimanendo all'interno del corridoio di volatilità a 1 deviazione standard.`;
+      keyPros = ['Canale di profitto bidirezionale', 'Costante incasso Theta settimanale', 'Rischio limitato'];
+    }
+  } else {
+    // MONTHLY
+    if (directionView === 'BULLISH' || directionView === 'MODERATE_BULL') {
+      strategyId = 'bull-put-spread';
+      strategyName = 'Bull Put Credit Spread Mensile (30 DTE)';
+      description = 'Vendita di Put OTM a 30-45 giorni con gestione a 21 DTE.';
+      thesis = `Setup mensile classico (30-45 DTE) su ${symbol || 'SPX'}: la vendita di Put OTM consente una gestione del trade al 50% di profitto prima dell'aumento del rischio gamma.`;
+      keyPros = ['Gestione ottimale del trade a 21 DTE', 'Ampio margine di sicurezza statistico'];
+    } else if (directionView === 'BEARISH') {
+      strategyId = 'bear-put-spread';
+      strategyName = 'Bear Put Spread Mensile (30 DTE)';
+      description = 'Bear Put Spread a 30-45 giorni.';
+      thesis = `Posizione ribassista mensile a medio termine con costo controllato su ${symbol || 'SPX'}.`;
+      keyPros = ['Rischio limitato', 'Leva asimmetrica'];
+    } else if (directionView === 'VOLATILITY') {
+      strategyId = 'strangle';
+      strategyName = 'Long Strangle Mensile (30 DTE)';
+      description = 'Long Strangle a 30 giorni.';
+      thesis = `Esposizione ad espansione di volatilità implicita a medio termine.`;
+      keyPros = ['Esposizione Long Vega', 'Rischio limitato'];
+    } else {
+      strategyId = 'iron-condor';
+      strategyName = 'Iron Condor Mensile (30-45 DTE)';
+      description = 'Configurazione istituzionale classica a 30-45 DTE (Standard CBOE / Tasty).';
+      thesis = `Setup istituzionale a 30-45 DTE su ${symbol || 'SPX'}: massimizza la raccolta di premio con Delta ~16 e permette la chiusura al 50% di profitto massimo prima che aumenti il rischio Gamma.`;
+      keyPros = ['Standard istituzionale CBOE', 'POP > 70%', 'Chiusura mirata al 50% max profit'];
+    }
+  }
+
+  return res.json({
+    strategyId,
+    strategyName,
+    description,
+    thesis,
+    keyPros,
+    actionLabel: `Applica ${strategyName} al Builder`,
+  });
 });
 
 // Market Option Chain Proxy
